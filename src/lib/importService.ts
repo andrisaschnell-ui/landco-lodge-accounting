@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { ParsedSalaryResult } from "./parsers/salaryParser";
 import type { ParsedBimResult } from "./parsers/bimTransferParser";
 import type { ParsedMonthEndResult } from "./parsers/monthEndParser";
 import type { ParsedBdoResult } from "./parsers/bdoBankParser";
@@ -33,18 +32,47 @@ async function getBankAccountMap(): Promise<Map<string, string>> {
   return map;
 }
 
-export async function importSalary(result: ParsedSalaryResult, filename: string) {
-  const empMap = await getEmployeeMap();
+export async function importSalary(lines: any[], filename: string, month: number, year: number) {
+  let empMap = await getEmployeeMap();
+
+  // Find missing employees
+  const missingNames = new Set<string>();
+  lines.forEach(l => {
+    if (l.employee_name && !empMap.has(l.employee_name.toUpperCase())) {
+      missingNames.add(l.employee_name);
+    }
+  });
+
+  if (missingNames.size > 0) {
+    const newEmployees = Array.from(missingNames).map(name => {
+      const line = lines.find(l => l.employee_name === name);
+      return {
+        name,
+        base_salary: line?.base_salary || 0,
+        category: line?.category || null,
+        house_assignment: line?.house_code || null,
+        food_allowance: line?.food_allowance || 0,
+        nib: line?.nib || null,
+      };
+    });
+    
+    // Insert new employees
+    const { error: insertError } = await supabase.from("employees").insert(newEmployees);
+    if (insertError) throw new Error("Failed to create missing employees: " + insertError.message);
+    
+    // Refetch the map
+    empMap = await getEmployeeMap();
+  }
 
   // Create salary run
   const { data: run, error: runErr } = await supabase
     .from("salary_runs")
-    .insert({ month: result.month, year: result.year, status: "imported" })
+    .insert({ month, year, status: "imported" })
     .select("id")
     .single();
   if (runErr) throw runErr;
 
-  const salaryLines = result.lines.map((l) => {
+  const salaryLines = lines.map((l) => {
     const empId = empMap.get(l.employee_name.toUpperCase());
     return {
       salary_run_id: run.id,
@@ -55,7 +83,7 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
       days_worked: l.days_worked,
       monthly_salary: l.monthly_salary,
       nightshift_hours: l.nightshift_hours,
-      overtime_25_percent: l.overtime_25_percent,
+      overtime_25_percent: l.overtime_25_percent || l.guardas_25,
       overtime_15x_hours: l.overtime_15x_hours,
       overtime_15x_amount: l.overtime_15x_amount,
       overtime_2x_hours: l.overtime_2x_hours,
@@ -73,7 +101,7 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
       net_salary: l.net_salary,
       nib: l.nib,
     };
-  }).filter((l) => l.employee_id);
+  });
 
   const { error } = await supabase.from("salary_lines").insert(salaryLines);
   if (error) throw error;
@@ -87,7 +115,7 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
   };
   await supabase.from("salary_runs").update(totals).eq("id", run.id);
 
-  await logImport(filename, "salary", result.month, result.year, salaryLines.length);
+  await logImport(filename, "salary", month, year, salaryLines.length);
   return salaryLines.length;
 }
 

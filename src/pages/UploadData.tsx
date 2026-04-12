@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { parseSalarySheet } from "@/lib/parsers/salaryParser";
+import { parseSalarySheet } from "@/lib/parsers/newSalaryParser";
 import { parseBimTransfers } from "@/lib/parsers/bimTransferParser";
 import { parseMonthEnd } from "@/lib/parsers/monthEndParser";
 import { parseBdoBank } from "@/lib/parsers/bdoBankParser";
@@ -67,9 +67,9 @@ export default function UploadData() {
 
       switch (fileType) {
         case "salary": {
-          const result = parseSalarySheet(buffer, m, y);
-          count = result.lines.length;
-          preview = result.lines
+          const parsedLines = await parseSalarySheet(file);
+          count = parsedLines.length;
+          preview = parsedLines
             .slice(0, 5)
             .map((l) => `${l.employee_name} — Gross: ${l.gross_total.toLocaleString()} MZN, Net: ${l.net_salary.toLocaleString()} MZN`)
             .join("\n");
@@ -137,7 +137,7 @@ export default function UploadData() {
 
       switch (fileType) {
         case "salary":
-          imported = await importSalary(parseSalarySheet(buffer, m, y), state.file.name);
+          imported = await importSalary(await parseSalarySheet(state.file), state.file.name, m, y);
           break;
         case "bim_transfer":
           imported = await importBimTransfers(parseBimTransfers(buffer, m, y), state.file.name);
@@ -155,8 +155,9 @@ export default function UploadData() {
 
       setState((s) => ({ ...s, status: "success", recordCount: imported }));
       toast({ title: "Import complete", description: `${imported} records imported successfully.` });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Import failed";
+    } catch (err: any) {
+      console.error(err);
+      const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
       setState((s) => ({ ...s, status: "error", error: msg }));
       toast({ title: "Import failed", description: msg, variant: "destructive" });
     }
