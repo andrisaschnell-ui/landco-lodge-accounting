@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -41,8 +42,10 @@ export default function Shareholders() {
             </TableHeader>
             <TableBody>
               {shareholders?.map((s: any) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
+                <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableCell className="font-medium">
+                    <Link to={`/shareholders/${s.id}`} className="text-primary underline-offset-4 hover:underline">{s.name}</Link>
+                  </TableCell>
                   <TableCell>{s.property_code}</TableCell>
                   <TableCell>{s.ownership_percentage}%</TableCell>
                 </TableRow>
