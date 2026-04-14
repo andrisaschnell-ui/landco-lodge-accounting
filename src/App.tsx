@@ -13,6 +13,8 @@ import Employees from "./pages/Employees";
 import Payroll from "./pages/Payroll";
 import Properties from "./pages/Properties";
 import UploadData from "./pages/UploadData";
+import Reports from "./pages/Reports";
+import ShareholderDetail from "./pages/ShareholderDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +60,8 @@ const App = () => (
               <Route path="/employees" element={<Employees />} />
               <Route path="/payroll" element={<Payroll />} />
               <Route path="/properties" element={<Properties />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/shareholders/:id" element={<ShareholderDetail />} />
               <Route path="/upload" element={<UploadData />} />
             </Route>
             <Route path="*" element={<NotFound />} />
