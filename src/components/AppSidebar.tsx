@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ArrowLeftRight, Users, Building2, Briefcase,
-  FileSpreadsheet, Upload, LogOut,
+  FileSpreadsheet, Upload, LogOut, BarChart3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -19,6 +19,7 @@ const mainItems = [
   { title: "Employees", url: "/employees", icon: Briefcase },
   { title: "Payroll", url: "/payroll", icon: FileSpreadsheet },
   { title: "Properties", url: "/properties", icon: Building2 },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Upload", url: "/upload", icon: Upload },
 ];
 
