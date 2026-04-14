@@ -103,3 +103,11 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body { background: white !important; }
+  .print\\:hidden, [class*="print:hidden"] { display: none !important; }
+  main { padding: 0 !important; }
+  table { font-size: 10px; }
+  @page { margin: 1cm; }
+}
