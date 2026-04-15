@@ -590,6 +590,7 @@ export type Database = {
           advance: number | null
           back_payment: number | null
           base_salary: number | null
+          category: string | null
           created_at: string
           days_worked: number | null
           debt: number | null
@@ -597,6 +598,7 @@ export type Database = {
           food_allowance: number | null
           gratification: number | null
           gross_total: number | null
+          guardas_25: number | null
           holiday_amount: number | null
           holiday_days: number | null
           id: string
@@ -619,6 +621,7 @@ export type Database = {
           advance?: number | null
           back_payment?: number | null
           base_salary?: number | null
+          category?: string | null
           created_at?: string
           days_worked?: number | null
           debt?: number | null
@@ -626,6 +629,7 @@ export type Database = {
           food_allowance?: number | null
           gratification?: number | null
           gross_total?: number | null
+          guardas_25?: number | null
           holiday_amount?: number | null
           holiday_days?: number | null
           id?: string
@@ -648,6 +652,7 @@ export type Database = {
           advance?: number | null
           back_payment?: number | null
           base_salary?: number | null
+          category?: string | null
           created_at?: string
           days_worked?: number | null
           debt?: number | null
@@ -655,6 +660,7 @@ export type Database = {
           food_allowance?: number | null
           gratification?: number | null
           gross_total?: number | null
+          guardas_25?: number | null
           holiday_amount?: number | null
           holiday_days?: number | null
           id?: string
