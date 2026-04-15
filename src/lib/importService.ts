@@ -44,8 +44,12 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
     .single();
   if (runErr) throw runErr;
 
+  // Track unmatched employees for debugging
+  const unmatched: string[] = [];
+
   const salaryLines = result.lines.map((l) => {
     const empId = empMap.get(l.employee_name.toUpperCase());
+    if (!empId) unmatched.push(l.employee_name);
     return {
       salary_run_id: run.id,
       employee_id: empId || null,
@@ -72,8 +76,13 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
       total_deductions: l.total_deductions,
       net_salary: l.net_salary,
       nib: l.nib,
+      category: l.category,
     };
   }).filter((l) => l.employee_id);
+
+  if (unmatched.length > 0) {
+    console.warn(`Salary import: ${unmatched.length} employees not matched:`, unmatched);
+  }
 
   const { error } = await supabase.from("salary_lines").insert(salaryLines);
   if (error) throw error;
