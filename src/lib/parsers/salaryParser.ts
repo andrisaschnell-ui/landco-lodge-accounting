@@ -10,7 +10,7 @@ export interface ParsedSalaryLine {
   days_worked: number;
   monthly_salary: number;
   nightshift_hours: number;
-  overtime_25_percent: number;
+  guardas_25: number;
   overtime_15x_hours: number;
   overtime_15x_amount: number;
   overtime_2x_hours: number;
