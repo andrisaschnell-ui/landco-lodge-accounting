@@ -10,7 +10,7 @@ export interface ParsedSalaryLine {
   days_worked: number;
   monthly_salary: number;
   nightshift_hours: number;
-  overtime_25_percent: number;
+  guardas_25: number;
   overtime_15x_hours: number;
   overtime_15x_amount: number;
   overtime_2x_hours: number;
@@ -94,7 +94,7 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
       days_worked: num(row[11]),
       monthly_salary: num(row[12]),
       nightshift_hours: num(row[13]),
-      overtime_25_percent: num(row[14]),
+      guardas_25: num(row[14]),
       overtime_15x_hours: num(row[15]),
       overtime_15x_amount: num(row[16]),
       overtime_2x_hours: num(row[17]),
