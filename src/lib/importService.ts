@@ -55,7 +55,7 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
       days_worked: l.days_worked,
       monthly_salary: l.monthly_salary,
       nightshift_hours: l.nightshift_hours,
-      overtime_25_percent: l.overtime_25_percent,
+      guardas_25: l.guardas_25,
       overtime_15x_hours: l.overtime_15x_hours,
       overtime_15x_amount: l.overtime_15x_amount,
       overtime_2x_hours: l.overtime_2x_hours,
