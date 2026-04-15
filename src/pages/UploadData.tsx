@@ -136,9 +136,18 @@ export default function UploadData() {
       let imported = 0;
 
       switch (fileType) {
-        case "salary":
-          imported = await importSalary(parseSalarySheet(buffer, m, y), state.file.name);
+        case "salary": {
+          const result = await importSalary(parseSalarySheet(buffer, m, y), state.file.name);
+          imported = result.imported;
+          if (result.unmatched.length > 0) {
+            toast({
+              title: `${result.unmatched.length} employees not matched`,
+              description: result.unmatched.slice(0, 5).join(", "),
+              variant: "destructive",
+            });
+          }
           break;
+        }
         case "bim_transfer":
           imported = await importBimTransfers(parseBimTransfers(buffer, m, y), state.file.name);
           break;
