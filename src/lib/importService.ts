@@ -97,7 +97,7 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
   await supabase.from("salary_runs").update(totals).eq("id", run.id);
 
   await logImport(filename, "salary", result.month, result.year, salaryLines.length);
-  return salaryLines.length;
+  return { imported: salaryLines.length, unmatched };
 }
 
 export async function importBimTransfers(result: ParsedBimResult, filename: string) {
