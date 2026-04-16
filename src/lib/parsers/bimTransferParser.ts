@@ -22,27 +22,48 @@ const str = (v: unknown): string => (v == null ? '' : String(v).trim());
 
 export function parseBimTransfers(file: ArrayBuffer, month: number, year: number): ParsedBimResult {
   const wb = XLSX.read(file, { type: 'array' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
+
+  // Extract BIM salary transfers from the "Folha de salarios" sheet
+  // Each employee row has their name (col 2), NIB (col 31), and net salary (col 30)
+  const sheetName = wb.SheetNames.find(
+    (s) => s.toLowerCase().includes('folha') || s.toLowerCase().includes('salario')
+  );
+  if (!sheetName) throw new Error('Could not find "Folha de salarios" sheet');
+
+  const ws = wb.Sheets[sheetName];
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-  const transfers: ParsedBimTransfer[] = [];
+  // Find header row
+  let dataStart = -1;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    const r = rows[i];
+    if (!r) continue;
+    if (str(r[0]).toUpperCase() === 'NO' && str(r[2]).toUpperCase().includes('NOME')) {
+      dataStart = i + 2;
+      break;
+    }
+  }
 
-  for (let i = 0; i < rows.length; i++) {
+  const transfers: ParsedBimTransfer[] = [];
+  if (dataStart < 0) return { transfers, month, year };
+
+  for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
-    const name = str(row[1] || row[2]);
-    const nib = str(row[3] || row[4]);
-    // Look for rows with a name, NIB-like number, and amount
-    if (name && nib.length >= 6 && num(row[5] || row[4] || row[6]) > 0) {
-      // Try to find amount column (usually last significant column)
-      let amount = 0;
-      for (let c = row.length - 1; c >= 3; c--) {
-        const v = num(row[c]);
-        if (v > 0) { amount = v; break; }
-      }
-      if (amount > 0) {
-        transfers.push({ name, nib, amount, description: `Salary transfer ${month}/${year}` });
-      }
+    const no = num(row[0]);
+    const name = str(row[2]);
+    if (!no || !name) continue;
+
+    const netSalary = num(row[30]);
+    const nib = str(row[31]);
+
+    if (netSalary > 0 && nib) {
+      transfers.push({
+        name,
+        nib,
+        amount: netSalary,
+        description: `Salary transfer ${month}/${year}`,
+      });
     }
   }
 

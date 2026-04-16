@@ -43,46 +43,68 @@ const num = (v: unknown): number => {
 
 const str = (v: unknown): string => (v == null ? '' : String(v).trim());
 
+function findSheet(wb: XLSX.WorkBook, candidates: string[]): XLSX.WorkSheet | null {
+  for (const name of candidates) {
+    // Try exact match, then case-insensitive, then partial match
+    if (wb.Sheets[name]) return wb.Sheets[name];
+    const lower = name.toLowerCase();
+    const match = wb.SheetNames.find(
+      (s) => s.toLowerCase() === lower || s.toLowerCase().trim() === lower
+    );
+    if (match) return wb.Sheets[match];
+  }
+  // Partial match
+  for (const name of candidates) {
+    const lower = name.toLowerCase();
+    const match = wb.SheetNames.find((s) => s.toLowerCase().includes(lower));
+    if (match) return wb.Sheets[match];
+  }
+  return null;
+}
+
 export function parseSalarySheet(file: ArrayBuffer, month: number, year: number): ParsedSalaryResult {
   const wb = XLSX.read(file, { type: 'array' });
-  // First sheet is "Folha de salarios"
-  const ws = wb.Sheets[wb.SheetNames[0]];
+
+  // Target the "Folha de salarios" sheet specifically
+  const ws = findSheet(wb, ['Folha de salarios', 'Folha de Salarios', 'FOLHA DE SALARIOS', 'Folha']);
+  if (!ws) throw new Error('Could not find "Folha de salarios" sheet in this workbook');
+
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-  // Find header row (row with "NO" in col A and "NOME DO TRABALHADOR" in col C)
+  // Find header row (row with "NO" in col A and "NOME DO TRABALHADOR" somewhere)
   let headerIdx = -1;
   for (let i = 0; i < Math.min(rows.length, 15); i++) {
-    if (str(rows[i]?.[0]) === 'NO' && str(rows[i]?.[2]).includes('NOME')) {
+    const r = rows[i];
+    if (!r) continue;
+    const col0 = str(r[0]).toUpperCase();
+    const col2 = str(r[2]).toUpperCase();
+    if (col0 === 'NO' && (col2.includes('NOME') || col2.includes('TRABALHADOR'))) {
       headerIdx = i;
       break;
     }
   }
-  if (headerIdx === -1) throw new Error('Could not find salary header row');
+  if (headerIdx === -1) throw new Error('Could not find salary header row (NO / NOME DO TRABALHADOR)');
 
-  // Data starts 2 rows after header (skip sub-header)
+  // Data starts 2 rows after header (skip sub-header row with column names)
   const dataStart = headerIdx + 2;
   const lines: ParsedSalaryLine[] = [];
-
-  // Second sheet "Sindicate" has NIBs - build lookup
-  const nibMap = new Map<string, string>();
-  if (wb.SheetNames.length > 1) {
-    const ws2 = wb.Sheets[wb.SheetNames[1]];
-    const rows2: unknown[][] = XLSX.utils.sheet_to_json(ws2, { header: 1, defval: null });
-    for (const row of rows2) {
-      const name = str(row[2]);
-      const nib = str(row[8]);
-      if (name && nib && /^\d+$/.test(nib)) {
-        nibMap.set(name.toUpperCase(), nib);
-      }
-    }
-  }
 
   for (let i = dataStart; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
     const no = num(row[0]);
     const name = str(row[2]);
-    if (!no || !name) continue; // skip non-employee rows
+    if (!no || !name) continue; // skip non-employee rows (totals, blanks)
+
+    // Column mapping from "Folha de salarios" layout:
+    // 0:NO, 1:house_code, 2:NAME, 3:EngDate, 4:DisDate, 5:NUIT, 6:CATEGORIA
+    // 7:Salario Base, 8:(adjusted sal), 9:ALIMENTACAO, 10:BackPayment
+    // 11:DIAS, 12:SALARIO MENSAL, 13:NIGHTSHIFT, 14:25% GUARDAS
+    // 15:HORAS 1.5, 16:VALOR 1.5, 17:HORAS 2, 18:VALOR 2
+    // 19:PREMIOS, 20:GRATIFICACOES, 21:DIAS FERIAS, 22:FERIA MONTANTE
+    // 23:Total Remuneração, 24:Advance, 25:IRPS, 26:DIVIDA
+    // 27:INSS, 28:SIND, 29:TOTAL DEDUCTIONS, 30:SALARIO LIQUIDO
+    // 31:NIB(ARREDONDAMENTO column holds NIB numbers)
 
     const line: ParsedSalaryLine = {
       employee_name: name,
@@ -109,11 +131,15 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
       inss_employee: num(row[27]),
       sind: num(row[28]),
       total_deductions: num(row[29]),
-      net_salary: 0,
-      nib: nibMap.get(name.toUpperCase()) || '',
+      net_salary: num(row[30]),
+      nib: str(row[31]),
     };
-    // net = gross - deductions
-    line.net_salary = line.gross_total - line.total_deductions;
+
+    // If net_salary is 0 but gross/deductions exist, calculate it
+    if (line.net_salary === 0 && line.gross_total > 0) {
+      line.net_salary = line.gross_total - line.total_deductions;
+    }
+
     lines.push(line);
   }
 
