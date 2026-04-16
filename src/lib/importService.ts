@@ -36,7 +36,6 @@ async function getBankAccountMap(): Promise<Map<string, string>> {
 export async function importSalary(result: ParsedSalaryResult, filename: string) {
   const empMap = await getEmployeeMap();
 
-  // Create salary run
   const { data: run, error: runErr } = await supabase
     .from("salary_runs")
     .insert({ month: result.month, year: result.year, status: "imported" })
@@ -44,7 +43,6 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
     .single();
   if (runErr) throw runErr;
 
-  // Track unmatched employees for debugging
   const unmatched: string[] = [];
 
   const salaryLines = result.lines.map((l) => {
@@ -87,7 +85,6 @@ export async function importSalary(result: ParsedSalaryResult, filename: string)
   const { error } = await supabase.from("salary_lines").insert(salaryLines);
   if (error) throw error;
 
-  // Update run totals
   const totals = {
     total_gross: salaryLines.reduce((s, l) => s + (l.gross_total || 0), 0),
     total_net: salaryLines.reduce((s, l) => s + (l.net_salary || 0), 0),
@@ -121,14 +118,11 @@ export async function importBimTransfers(result: ParsedBimResult, filename: stri
 }
 
 export async function importMonthEnd(result: ParsedMonthEndResult, filename: string) {
-  const propMap = await getPropertyMap();
   let count = 0;
 
-  // Import income
   if (result.income.length > 0) {
     const incRows = result.income.map((i) => ({
       date: i.date || `${result.year}-${String(result.month).padStart(2, "0")}-01`,
-      property_id: propMap.get(i.house) || null,
       guest_name: i.guest_name,
       accommodation_amount_mzn: i.accommodation_amount_mzn,
       amount_usd: i.amount_usd,
@@ -141,7 +135,6 @@ export async function importMonthEnd(result: ParsedMonthEndResult, filename: str
     count += incRows.length;
   }
 
-  // Import expenses
   if (result.expenses.length > 0) {
     const catMap = await getCategoryMap();
     const expRows = result.expenses.map((e) => ({
@@ -164,7 +157,8 @@ export async function importMonthEnd(result: ParsedMonthEndResult, filename: str
 
 export async function importBdoBank(result: ParsedBdoResult, filename: string) {
   const bankMap = await getBankAccountMap();
-  const bdoId = bankMap.get("BDO CURRENT") || bankMap.get("BDO") || null;
+  const bimMznId = bankMap.get("BIM MZN") || bankMap.get("BIM BANK CONTROL MTN") || bankMap.get("BDO CURRENT") || bankMap.get("BDO") || null;
+  const bimUsdId = bankMap.get("BIM USD") || bankMap.get("BIM BANK CONTROL USD") || null;
 
   const rows = result.transactions.map((t) => ({
     date: t.date || null,
@@ -173,7 +167,7 @@ export async function importBdoBank(result: ParsedBdoResult, filename: string) {
     debit: t.debit,
     credit: t.credit,
     balance: t.balance,
-    bank_account_id: bdoId,
+    bank_account_id: t.currency === 'USD' ? (bimUsdId || bimMznId) : bimMznId,
     month: result.month,
     year: result.year,
   }));

@@ -31,12 +31,12 @@ interface UploadState {
   error: string;
 }
 
-const FILE_TYPES: { value: FileType; label: string; desc: string }[] = [
-  { value: "month_end", label: "Month End Accounts", desc: "Income & expense transactions" },
-  { value: "salary", label: "Salary Sheet", desc: "Folha de salarios" },
-  { value: "bim_transfer", label: "BIM Salary Transfers", desc: "BIM SALARIOS" },
-  { value: "bdo_bank", label: "BDO Bank Control", desc: "Bank statement lines" },
-  { value: "petty_cash", label: "Petty Cash", desc: "Cash transactions" },
+const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string }[] = [
+  { value: "month_end", label: "Month End (Invoices & Creditors)", desc: "Income from Invoices sheet, expenses from Creditors sheet", sheet: "Invoices + Creditors" },
+  { value: "salary", label: "Salary Sheet (Folha de Salarios)", desc: "Employee salary data from Folha de salarios sheet", sheet: "Folha de salarios" },
+  { value: "bim_transfer", label: "BIM Salary Transfers", desc: "Salary transfer list (name, NIB, net salary) from salary sheet", sheet: "Folha de salarios" },
+  { value: "bdo_bank", label: "BIM Bank Control", desc: "Bank transactions from BIM Bank Control MZN + USD sheets", sheet: "BIM Bank Control Mtn + USD" },
+  { value: "petty_cash", label: "Petty Cash + Pre-paid", desc: "Cash transactions from Petty cash and Pre-paid sheets", sheet: "Petty cash + Pre-paid" },
 ];
 
 const MONTHS = [
@@ -71,7 +71,7 @@ export default function UploadData() {
           count = result.lines.length;
           preview = result.lines
             .slice(0, 5)
-            .map((l) => `${l.employee_name} — Gross: ${l.gross_total.toLocaleString()} MZN, Net: ${l.net_salary.toLocaleString()} MZN`)
+            .map((l) => `${l.employee_name} (${l.category}) — Gross: ${l.gross_total.toLocaleString()} MZN, Net: ${l.net_salary.toLocaleString()} MZN`)
             .join("\n");
           break;
         }
@@ -87,11 +87,19 @@ export default function UploadData() {
         case "month_end": {
           const result = parseMonthEnd(buffer, m, y);
           count = result.income.length + result.expenses.length;
-          preview = `Income: ${result.income.length} rows, Expenses: ${result.expenses.length} rows\n`;
-          preview += result.income
-            .slice(0, 3)
-            .map((i) => `  ${i.guest_name} @ ${i.house} — ${i.accommodation_amount_mzn.toLocaleString()} MZN`)
-            .join("\n");
+          preview = `Income (Invoices): ${result.income.length} rows, Expenses (Creditors): ${result.expenses.length} rows\n`;
+          if (result.income.length > 0) {
+            preview += result.income
+              .slice(0, 3)
+              .map((i) => `  INV#${i.invoice_no} ${i.guest_name} — ${i.accommodation_amount_mzn.toLocaleString()} MZN`)
+              .join("\n");
+          }
+          if (result.expenses.length > 0) {
+            preview += "\n" + result.expenses
+              .slice(0, 3)
+              .map((e) => `  ${e.supplier}: ${e.description} — ${e.amount_mzn.toLocaleString()} MZN`)
+              .join("\n");
+          }
           break;
         }
         case "bdo_bank": {
@@ -99,7 +107,7 @@ export default function UploadData() {
           count = result.transactions.length;
           preview = result.transactions
             .slice(0, 5)
-            .map((t) => `${t.date} ${t.description} — D:${t.debit} C:${t.credit}`)
+            .map((t) => `${t.date} [${t.currency}] ${t.description} — In:${t.credit.toLocaleString()} Out:${t.debit.toLocaleString()}`)
             .join("\n");
           break;
         }
@@ -109,6 +117,12 @@ export default function UploadData() {
           preview = results
             .map((r) => `${r.sheetName}: ${r.transactions.length} transactions`)
             .join("\n");
+          if (results.length > 0 && results[0].transactions.length > 0) {
+            preview += "\n" + results[0].transactions
+              .slice(0, 3)
+              .map((t) => `  ${t.date} ${t.description} — In:${t.credit} Out:${t.debit}`)
+              .join("\n");
+          }
           break;
         }
       }
@@ -175,21 +189,24 @@ export default function UploadData() {
     setState({ file: null, status: "idle", preview: "", recordCount: 0, error: "" });
   };
 
+  const selectedType = FILE_TYPES.find((f) => f.value === fileType);
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Upload Data</h1>
-      <p className="text-muted-foreground">Import Excel spreadsheets into the LANACC database.</p>
+      <p className="text-muted-foreground">
+        Import data from BDO Bank Control Excel workbooks. Each file contains multiple sheets — select which data type to import.
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Config panel */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Import Settings</CardTitle>
-            <CardDescription>Select file type and period</CardDescription>
+            <CardDescription>Select data type and period</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">File Type</label>
+              <label className="text-sm font-medium">Data Type</label>
               <Select value={fileType} onValueChange={(v) => { setFileType(v as FileType); reset(); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -229,23 +246,28 @@ export default function UploadData() {
                 </Select>
               </div>
             </div>
+
+            {selectedType && (
+              <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                <strong>Target sheets:</strong> {selectedType.sheet}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Upload area */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-primary" />
-              {FILE_TYPES.find((f) => f.value === fileType)?.label}
+              {selectedType?.label}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {state.status === "idle" && (
               <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-10 cursor-pointer hover:border-primary/50 transition-colors">
                 <Upload className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-sm font-medium">Drop your Excel file here or click to browse</p>
-                <p className="text-xs text-muted-foreground mt-1">.xlsx files only</p>
+                <p className="text-sm font-medium">Drop your BDO Bank Control Excel file here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">.xlsx files — e.g. "01 BDO Bank Control 2026.xlsx"</p>
                 <Input
                   type="file"
                   accept=".xlsx,.xls"
@@ -289,7 +311,7 @@ export default function UploadData() {
                 <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
                 <p className="font-medium">Successfully imported {state.recordCount} records</p>
                 <p className="text-sm text-muted-foreground">
-                  {MONTHS[parseInt(month) - 1]} {year} — {FILE_TYPES.find((f) => f.value === fileType)?.label}
+                  {MONTHS[parseInt(month) - 1]} {year} — {selectedType?.label}
                 </p>
                 <Button variant="outline" onClick={reset}>Upload Another File</Button>
               </div>
