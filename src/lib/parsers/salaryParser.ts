@@ -95,6 +95,9 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
     const no = num(row[0]);
     const name = str(row[2]);
     if (!no || !name) continue; // skip non-employee rows (totals, blanks)
+    // Skip footer text rows (instructions printed below data)
+    if (name.toLowerCase().startsWith('riscar') || name.toLowerCase().startsWith('assinalar') || 
+        name.toLowerCase().startsWith('nao preencher') || name.toLowerCase().startsWith('descontos')) continue;
 
     // Column mapping from "Folha de salarios" layout:
     // 0:NO, 1:house_code, 2:NAME, 3:EngDate, 4:DisDate, 5:NUIT, 6:CATEGORIA
