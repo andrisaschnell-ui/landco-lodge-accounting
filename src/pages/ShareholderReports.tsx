@@ -47,17 +47,17 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 export default function ShareholderReports() {
   const [selectedHouse, setSelectedHouse] = useState("H1");
   const [selectedYear, setSelectedYear] = useState("2026");
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   const queryParams = new URLSearchParams({ year: selectedYear });
-  if (selectedMonth) queryParams.set("month", selectedMonth);
+  if (selectedMonth && selectedMonth !== "all") queryParams.set("month", selectedMonth);
 
   const { data: stmt, isLoading, error } = useQuery({
     queryKey: ["shareholder-statement", selectedHouse, selectedYear, selectedMonth],
     queryFn: () => api(`/api/reports/shareholder/${selectedHouse}?${queryParams}`),
   });
 
-  const periodLabel = selectedMonth
+  const periodLabel = selectedMonth && selectedMonth !== "all"
     ? `${MONTHS.find(m => m.value === selectedMonth)?.label} ${selectedYear}`
     : `Full Year ${selectedYear}`;
 
@@ -100,7 +100,7 @@ export default function ShareholderReports() {
               <SelectValue placeholder="All Months" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Months</SelectItem>
+              <SelectItem value="all">All Months</SelectItem>
               {MONTHS.map(m => (
                 <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
               ))}
@@ -120,7 +120,7 @@ export default function ShareholderReports() {
             <StatCard label="Direct Expenses" value={stmt.total_direct_expenses} icon={TrendingDown} color="border-orange-400" />
             <StatCard
               label="Total Salary Charge"
-              value={stmt.direct_salary_total + stmt.communal_salary_share}
+              value={stmt.direct_salary_total + stmt.shared_salary_total}
               icon={Users}
               color="border-purple-400"
             />
