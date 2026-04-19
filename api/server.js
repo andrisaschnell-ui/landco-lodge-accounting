@@ -56,6 +56,22 @@ async function createAutoJournal(client, type, data) {
         ($1, (SELECT id FROM public.accounts WHERE code='711'), 0, $2)`,
       [entry.id, data.accommodation_amount_mzn || 0]
     );
+  } else if (type === 'expense') {
+    // Look up the mapped account for the category
+    const { rows: [cat] } = await client.query(
+      "SELECT pgc_account_code FROM public.expense_categories WHERE id = $1",
+      [data.category_id]
+    );
+    
+    const accountCode = cat?.pgc_account_code || '69'; // Default to "Other Expenses" (6.9) if unmapped
+
+    await client.query(`
+      INSERT INTO public.journal_lines (journal_entry_id, account_id, debit, credit)
+      VALUES 
+        ($1, (SELECT id FROM public.accounts WHERE code=$2), $3, 0),
+        ($1, (SELECT id FROM public.accounts WHERE code='111'), 0, $3)`,
+      [entry.id, accountCode, data.amount_mzn || 0]
+    );
   }
   return entry.id;
 }
@@ -114,6 +130,10 @@ app.post("/api/:table", requireAuth, async (req, res) => {
       const jeId = await createAutoJournal(client, 'income', row);
       await client.query(`UPDATE public.income_transactions SET journal_entry_id = $1 WHERE id = $2`, [jeId, row.id]);
       row.journal_entry_id = jeId;
+    } else if (t === 'expense_transactions') {
+      const jeId = await createAutoJournal(client, 'expense', row);
+      await client.query(`UPDATE public.expense_transactions SET journal_entry_id = $1 WHERE id = $2`, [jeId, row.id]);
+      row.journal_entry_id = jeId;
     }
 
     await client.query('COMMIT');
@@ -124,6 +144,29 @@ app.post("/api/:table", requireAuth, async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+app.patch("/api/:table", requireAuth, async (req, res) => {
+  const t = req.params.table;
+  if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
+  if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+  
+  const { id, ...body } = req.body || {};
+  if (!id) return res.status(400).json({ error: "id required" });
+  
+  const cols = Object.keys(body);
+  if (!cols.length) return res.status(400).json({ error: "empty body" });
+  
+  const sets = cols.map((c, i) => `${c}=$${i + 2}`);
+  const vals = cols.map(c => body[c]);
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE public.${t} SET ${sets.join(",")} WHERE id=$1 RETURNING *`,
+      [id, ...vals]
+    );
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get("/health", (_, res) => res.json({ ok: true }));

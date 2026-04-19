@@ -12,10 +12,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Plus, FileDown, Eye } from "lucide-react";
+import { Plus, FileDown, Eye, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from "react";
+import InvoiceForm from "@/components/InvoiceForm";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Invoices() {
+  const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
   const { data: invoices, isLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => api("/api/invoices"),
@@ -26,14 +32,34 @@ export default function Invoices() {
     window.open(`http://localhost:4000/api/invoices/${id}/pdf?token=${token}`, '_blank');
   };
 
+  const handleIssue = async (id: string) => {
+    try {
+      await api(`/api/invoices/${id}/issue`, { method: "POST" });
+      toast.success("Invoice issued and certified!");
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to issue invoice");
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Invoices (AT Certified)</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Invoice
-        </Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Invoice
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Create New Draft Invoice</DialogTitle>
+            </DialogHeader>
+            <InvoiceForm onSuccess={() => setOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -81,6 +107,17 @@ export default function Invoices() {
                       <Button variant="ghost" size="icon" title="View Detail">
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {inv.status === 'draft' && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Issue (Certify)" 
+                          className="text-blue-600"
+                          onClick={() => handleIssue(inv.id)}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button 
                         variant="ghost" 
                         size="icon" 

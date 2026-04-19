@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ArrowLeftRight, Users, Building2, Briefcase,
   FileSpreadsheet, Upload, LogOut, BarChart3,
-  BookOpen, ReceiptText, FileText,
+  BookOpen, ReceiptText, FileText, Settings2, BarChart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -28,6 +28,8 @@ const accountingItems = [
   { title: "Chart of Accounts", url: "/accounting/accounts", icon: BookOpen },
   { title: "Journal Entries", url: "/accounting/journal", icon: FileText },
   { title: "Invoices", url: "/accounting/invoices", icon: ReceiptText },
+  { title: "Account Mapping", url: "/accounting/mapping", icon: Settings2 },
+  { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
 ];
 
 export function AppSidebar() {

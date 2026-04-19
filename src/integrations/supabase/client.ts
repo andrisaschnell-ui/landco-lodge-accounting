@@ -2,7 +2,12 @@
  * LANACC Local API Wrapper
  * This mock intercepts Supabase calls and redirects them to the local Port 4000 API.
  */
-const API_URL = "http://localhost:4000";
+const getApiUrl = () => {
+  // If we are on a remote device, localhost won't work. We use the hostname that the page loaded from.
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return `http://${host}:4000`;
+};
+const API_URL = getApiUrl();
 
 const createMockQueryBuilder = (table: string) => {
   const state = { table };
@@ -10,18 +15,31 @@ const createMockQueryBuilder = (table: string) => {
   const builder: any = {
     select: () => builder,
     order: () => builder,
-    eq: () => builder,
+    eq: (col: string, val: any) => { 
+      if (col === 'id') state.id = val;
+      return builder; 
+    },
     single: () => builder,
+    update: (payload: any) => {
+      state.method = "PATCH";
+      state.body = payload;
+      return builder;
+    },
     // Add more chainable methods as needed...
     
     then: async (onfulfilled: any) => {
       try {
         const token = localStorage.getItem("lanacc_token");
+        const method = state.method || "GET";
+        const body = state.body ? JSON.stringify({ ...state.body, id: state.id }) : undefined;
+        
         const res = await fetch(`${API_URL}/api/${state.table}`, {
+          method,
           headers: { 
             "Content-Type": "application/json",
             "Authorization": token ? `Bearer ${token}` : ""
-          }
+          },
+          body
         });
         const data = await res.json();
         return onfulfilled({ data, error: null });

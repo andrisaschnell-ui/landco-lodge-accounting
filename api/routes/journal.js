@@ -106,5 +106,30 @@ export default function(pool, TABLES, requireAuth) {
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // GET /api/journal/income-statement
+  router.get('/income-statement', requireAuth, async (req, res) => {
+    try {
+      const { rows } = await pool.query(`
+        SELECT 
+          LEFT(a.code, 1) as class_digit,
+          CASE 
+            WHEN LEFT(a.code, 1) = '7' THEN 'Revenues'
+            WHEN LEFT(a.code, 1) = '6' THEN 'Expenses'
+            ELSE 'Other'
+          END as category,
+          a.name, a.code,
+          SUM(jl.credit - jl.debit) as balance
+        FROM public.accounts a
+        JOIN public.journal_lines jl ON jl.account_id = a.id
+        JOIN public.journal_entries je ON je.id = jl.journal_entry_id
+        WHERE je.posted = true 
+          AND (LEFT(a.code, 1) = '6' OR LEFT(a.code, 1) = '7')
+        GROUP BY a.id, a.code, a.name
+        ORDER BY a.code ASC
+      `);
+      res.json(rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return router;
 }

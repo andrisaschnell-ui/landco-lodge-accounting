@@ -40,15 +40,15 @@ export default function(pool, TABLES, requireAuth) {
            line_items, subtotal_mzn, vat_amount_mzn, total_mzn, currency, status, issued_by)
         VALUES ('DRAFT-' || gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11)
         RETURNING *
-      `, [invoice_date, property_id, client_name, client_nuit, client_address, 
-          JSON.stringify(line_items), subtotal, vat_total, subtotal + vat_total, currency || 'MZN', req.user.sub]);
+      `, [invoice_date || new Date(), property_id || null, client_name, client_nuit, client_address || '', 
+          JSON.stringify(line_items), subtotal_mzn || subtotal, vat_amount_mzn || vat_total, total_mzn || (subtotal + vat_total), currency || 'MZN', req.user.sub]);
       
       res.json(rows[0]);
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
-  // PATCH /api/invoices/:id/issue - finalize and assign AT hash
-  router.patch('/:id/issue', requireAuth, async (req, res) => {
+  // POST /api/invoices/:id/issue - finalize and assign AT hash
+  router.post('/:id/issue', requireAuth, async (req, res) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

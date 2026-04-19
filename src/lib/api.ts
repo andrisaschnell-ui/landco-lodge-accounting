@@ -2,7 +2,11 @@
 // Use INSTEAD of (or alongside) src/integrations/supabase/client.ts when running
 // the on-premise Docker stack.
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const getApiUrl = () => {
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  return `http://${host}:4000`;
+};
+const API = getApiUrl();
 
 function token() { return localStorage.getItem("lanacc_token") || ""; }
 
