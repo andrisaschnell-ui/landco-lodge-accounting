@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 // Route imports
 import journalRoutes from './routes/journal.js';
 import invoiceRoutes from './routes/invoices.js';
+import reportRoutes from './routes/reports.js';
 
 const { Pool } = pkg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -95,6 +96,7 @@ app.get("/auth/me", requireAuth, (req, res) => res.json({ user: req.user }));
 // ---------- modular routes ----------
 app.use('/api/journal', journalRoutes(pool, TABLES, requireAuth));
 app.use('/api/invoices', invoiceRoutes(pool, TABLES, requireAuth));
+app.use('/api/reports', reportRoutes(pool, requireAuth));
 
 // ---------- generic table API ----------
 app.get("/api/:table", requireAuth, async (req, res) => {

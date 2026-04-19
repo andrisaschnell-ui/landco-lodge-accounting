@@ -20,6 +20,7 @@ import JournalEntries from "./pages/JournalEntries";
 import Invoices from "./pages/Invoices";
 import AccountMapping from "./pages/AccountMapping";
 import FinancialReports from "./pages/FinancialReports";
+import ShareholderReports from "./pages/ShareholderReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/accounting/invoices" element={<Invoices />} />
               <Route path="/accounting/mapping" element={<AccountMapping />} />
               <Route path="/accounting/reports" element={<FinancialReports />} />
+              <Route path="/accounting/shareholders" element={<ShareholderReports />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

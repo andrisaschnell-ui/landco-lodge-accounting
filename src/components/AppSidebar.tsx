@@ -30,6 +30,7 @@ const accountingItems = [
   { title: "Invoices", url: "/accounting/invoices", icon: ReceiptText },
   { title: "Account Mapping", url: "/accounting/mapping", icon: Settings2 },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
+  { title: "Shareholder Statements", url: "/accounting/shareholders", icon: Users },
 ];
 
 export function AppSidebar() {
