@@ -12,7 +12,11 @@ export default function Transactions() {
   const { data: income } = useQuery({
     queryKey: ["income-transactions"],
     queryFn: async () => {
-      const { data } = await supabase.from("income_transactions").select("*, properties(name, code)").order("date", { ascending: false });
+      // Join with invoices to see if issued
+      const { data } = await supabase
+        .from("income_transactions")
+        .select("*, properties(name, code), invoices(id, invoice_number, status)")
+        .order("date", { ascending: false });
       return data ?? [];
     },
   });
@@ -65,6 +69,7 @@ export default function Transactions() {
                       <TableHead>Guest</TableHead>
                       <TableHead className="text-right">Amount MZN</TableHead>
                       <TableHead className="text-right">Amount USD</TableHead>
+                      <TableHead>Invoice</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -75,6 +80,13 @@ export default function Transactions() {
                         <TableCell>{t.guest_name ?? t.description ?? "—"}</TableCell>
                         <TableCell className="text-right">{formatMZN(t.accommodation_amount_mzn)}</TableCell>
                         <TableCell className="text-right">${formatMZN(t.amount_usd ?? 0)}</TableCell>
+                        <TableCell>
+                          {t.invoices?.[0] ? (
+                            <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                              {t.invoices[0].invoice_number}
+                            </span>
+                          ) : "—"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -167,20 +179,33 @@ export default function Transactions() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Credit</TableHead>
-                      <TableHead className="text-right">Debit</TableHead>
+                      <TableHead>Supplier / Description</TableHead>
+                      <TableHead>Allocation</TableHead>
+                      <TableHead className="text-right">In</TableHead>
+                      <TableHead className="text-right">Out</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pettyCash.map((t: any) => (
                       <TableRow key={t.id}>
-                        <TableCell>{t.date ?? "—"}</TableCell>
-                        <TableCell>{t.description}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.credit ?? 0)}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.debit ?? 0)}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.balance ?? 0)}</TableCell>
+                        <TableCell className="text-xs">{t.date ?? "—"}</TableCell>
+                        <TableCell>
+                          <div className="font-medium text-sm">{t.supplier || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{t.description}</div>
+                        </TableCell>
+                        <TableCell><span className="text-xs uppercase text-muted-foreground">{t.allocation || "—"}</span></TableCell>
+                        <TableCell className="text-right text-xs">{formatMZN(t.credit ?? 0)}</TableCell>
+                        <TableCell className="text-right text-xs">{formatMZN(t.debit ?? 0)}</TableCell>
+                        <TableCell className="text-right text-xs font-mono">{formatMZN(t.balance ?? 0)}</TableCell>
+                        <TableCell>
+                          {t.journal_entry_id ? (
+                            <span className="text-[10px] bg-green-100 text-green-700 px-1 rounded uppercase font-bold">Posted</span>
+                          ) : (
+                            <span className="text-[10px] bg-gray-100 text-gray-400 px-1 rounded uppercase font-bold">Draft</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

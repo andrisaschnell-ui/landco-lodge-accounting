@@ -26,6 +26,10 @@ services:
     container_name: lanacc-api
     ports:
       - "4000:4000"
+    volumes:
+      - ./api:/app
+      - ./scripts:/app/scripts
+      - /app/node_modules
     environment:
       - DATABASE_URL=postgres://postgres:root@db:5432/landco_v2_db
       - JWT_SECRET=landco-secret-key-2026
