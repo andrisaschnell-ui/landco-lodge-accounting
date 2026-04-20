@@ -64,17 +64,17 @@ export default function Dashboard() {
   const netProfit = totalIncome - totalExpenses;
 
   // Income by property for pie chart
-  const incomeByProperty = properties?.map((p) => ({
+  const incomeByProperty = (properties || []).map((p) => ({
     name: p.name,
-    value: income?.filter((t) => t.property_id === p.id).reduce((sum, t) => sum + Number(t.accommodation_amount_mzn), 0) ?? 0,
-  })).filter((d) => d.value > 0) ?? [];
+    value: (income || []).filter((t) => t.property_id === p.id).reduce((sum, t) => sum + Number(t.accommodation_amount_mzn), 0),
+  })).filter((d) => d.value > 0);
 
   // Monthly data for bar chart
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const monthlyData = months.map((name, i) => ({
     name,
-    income: income?.filter((t) => t.month === i + 1).reduce((sum, t) => sum + Number(t.accommodation_amount_mzn), 0) ?? 0,
-    expenses: expenses?.filter((t) => t.month === i + 1).reduce((sum, t) => sum + Number(t.amount_mzn), 0) ?? 0,
+    income: (income || []).filter((t) => t.month === i + 1).reduce((sum, t) => sum + Number(t.accommodation_amount_mzn), 0),
+    expenses: (expenses || []).filter((t) => t.month === i + 1).reduce((sum, t) => sum + Number(t.amount_mzn), 0),
   }));
 
   return (
