@@ -42,6 +42,7 @@ const createMockQueryBuilder = (table: string) => {
           body
         });
         const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || res.statusText);
         return onfulfilled({ data, error: null });
       } catch (e: any) {
         return onfulfilled({ data: null, error: { message: e.message } });
