@@ -15,7 +15,7 @@ export default function Dashboard() {
     queryKey: ["income-total"],
     queryFn: async () => {
       const { data } = await supabase.from("income_transactions").select("accommodation_amount_mzn, property_id, month");
-      return data ?? [];
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -23,7 +23,7 @@ export default function Dashboard() {
     queryKey: ["expense-total"],
     queryFn: async () => {
       const { data } = await supabase.from("expense_transactions").select("amount_mzn, is_shared, month");
-      return data ?? [];
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -31,7 +31,7 @@ export default function Dashboard() {
     queryKey: ["exchange-rate"],
     queryFn: async () => {
       const { data } = await supabase.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false }).limit(1);
-      return data?.[0] ?? null;
+      return Array.isArray(data) ? data[0] : null;
     },
   });
 
@@ -39,7 +39,7 @@ export default function Dashboard() {
     queryKey: ["properties"],
     queryFn: async () => {
       const { data } = await supabase.from("properties").select("*");
-      return data ?? [];
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -47,7 +47,7 @@ export default function Dashboard() {
     queryKey: ["shareholders-balances"],
     queryFn: async () => {
       const { data } = await supabase.from("shareholder_balances").select("*, shareholders(name), properties(name)");
-      return data ?? [];
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -55,7 +55,7 @@ export default function Dashboard() {
     queryKey: ["recent-imports"],
     queryFn: async () => {
       const { data } = await supabase.from("import_log").select("*").order("created_at", { ascending: false }).limit(5);
-      return data ?? [];
+      return Array.isArray(data) ? data : [];
     },
   });
 
