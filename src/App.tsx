@@ -60,37 +60,39 @@ function AuthRoute() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<AuthRoute />} />
-            <Route element={<ProtectedRoutes />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/transactions" element={<Transactions />} />
-              <Route path="/shareholders" element={<Shareholders />} />
-              <Route path="/employees" element={<Employees />} />
-              <Route path="/payroll" element={<Payroll />} />
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/shareholders/:id" element={<ShareholderDetail />} />
-              <Route path="/upload" element={<UploadData />} />
-              <Route path="/accounting/accounts" element={<ChartOfAccounts />} />
-              <Route path="/accounting/journal" element={<JournalEntries />} />
-              <Route path="/accounting/invoices" element={<Invoices />} />
-              <Route path="/accounting/mapping" element={<AccountMapping />} />
-              <Route path="/accounting/reports" element={<FinancialReports />} />
-              <Route path="/accounting/shareholders" element={<ShareholderReports />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth" element={<AuthRoute />} />
+              <Route element={<ProtectedRoutes />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/shareholders" element={<Shareholders />} />
+                <Route path="/employees" element={<Employees />} />
+                <Route path="/payroll" element={<Payroll />} />
+                <Route path="/properties" element={<Properties />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/shareholders/:id" element={<ShareholderDetail />} />
+                <Route path="/upload" element={<UploadData />} />
+                <Route path="/accounting/accounts" element={<ChartOfAccounts />} />
+                <Route path="/accounting/journal" element={<JournalEntries />} />
+                <Route path="/accounting/invoices" element={<Invoices />} />
+                <Route path="/accounting/mapping" element={<AccountMapping />} />
+                <Route path="/accounting/reports" element={<FinancialReports />} />
+                <Route path="/accounting/shareholders" element={<ShareholderReports />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
