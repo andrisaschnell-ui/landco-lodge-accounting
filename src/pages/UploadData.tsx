@@ -12,15 +12,17 @@ import { parseBimTransfers } from "@/lib/parsers/bimTransferParser";
 import { parseMonthEnd } from "@/lib/parsers/monthEndParser";
 import { parseBdoBank } from "@/lib/parsers/bdoBankParser";
 import { parsePettyCash } from "@/lib/parsers/pettyCashParser";
+import { parseExpenses } from "@/lib/parsers/expensesParser";
 import {
   importSalary,
   importBimTransfers,
   importMonthEnd,
   importBdoBank,
   importPettyCash,
+  importExpenses,
 } from "@/lib/importService";
 
-type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank";
+type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
 
 interface UploadState {
@@ -32,6 +34,7 @@ interface UploadState {
 }
 
 const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string }[] = [
+  { value: "expenses", label: "Expenses (Monthly)", desc: "Per-line expenses from MONTH END workbook — header on row 6 of the EXPENSES sheet", sheet: "EXPENSES (MONTH END workbook)" },
   { value: "month_end", label: "Month End (Invoices & Creditors)", desc: "Income from Invoices sheet, expenses from Creditors sheet", sheet: "Invoices + Creditors" },
   { value: "salary", label: "Salary Sheet (Folha de Salarios)", desc: "Employee salary data from Folha de salarios sheet", sheet: "Folha de salarios" },
   { value: "bim_transfer", label: "BIM Salary Transfers", desc: "Salary transfer list (name, NIB, net salary) from salary sheet", sheet: "Folha de salarios" },
@@ -125,6 +128,24 @@ export default function UploadData() {
           }
           break;
         }
+        case "expenses": {
+          const result = parseExpenses(buffer, m, y);
+          count = result.lines.length;
+          const cats = Object.entries(result.totals.perCategory)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 6)
+            .map(([k, v]) => `  ${k}: ${v.toLocaleString()} MZN`)
+            .join("\n");
+          preview = `Total lines: ${result.lines.length} | Grand total: ${result.totals.grand.toLocaleString()} MZN\n\nTop categories:\n${cats}\n\nFirst 5 lines:\n`;
+          preview += result.lines
+            .slice(0, 5)
+            .map((l) => `  ${l.date || '—'} [${l.category}${l.property_code ? ' / ' + l.property_code : ''}] ${l.supplier} — ${l.amount_mzn.toLocaleString()} MZN`)
+            .join("\n");
+          if (result.unmappedColumns.length > 0) {
+            preview += `\n\n⚠ Unmapped columns: ${result.unmappedColumns.join(', ')}`;
+          }
+          break;
+        }
       }
 
       setState({ file, status: "parsed", preview, recordCount: count, error: "" });
@@ -173,6 +194,9 @@ export default function UploadData() {
           break;
         case "petty_cash":
           imported = await importPettyCash(parsePettyCash(buffer, m, y), state.file.name);
+          break;
+        case "expenses":
+          imported = await importExpenses(parseExpenses(buffer, m, y), state.file.name);
           break;
       }
 

@@ -7,12 +7,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/sidebar-table"; // Assuming sidebar-table or ui/table
+} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// Fallback to basic table if sidebar-table doesn't exist
-import { Table as BaseTable, TableBody as BaseBody, TableCell as BaseCell, TableHead as BaseHead, TableHeader as BaseHeader, TableRow as BaseRow } from "@/components/ui/table";
 
 export default function ChartOfAccounts() {
   const { data: accounts, isLoading } = useQuery({
@@ -31,38 +28,38 @@ export default function ChartOfAccounts() {
           <CardTitle>Accounts</CardTitle>
         </CardHeader>
         <CardContent>
-          <BaseTable>
-            <BaseHeader>
-              <BaseRow>
-                <BaseHead className="w-[100px]">Code</BaseHead>
-                <BaseHead>Name</BaseHead>
-                <BaseHead>Type</BaseHead>
-                <BaseHead>Normal Side</BaseHead>
-                <BaseHead>Class</BaseHead>
-              </BaseRow>
-            </BaseHeader>
-            <BaseBody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Normal Side</TableHead>
+                <TableHead>Class</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {isLoading ? (
-                <BaseRow>
-                  <BaseCell colSpan={5} className="text-center py-10">Loading accounts...</BaseCell>
-                </BaseRow>
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10">Loading accounts...</TableCell>
+                </TableRow>
               ) : (
                 accounts?.map((account: any) => (
-                  <BaseRow key={account.id}>
-                    <BaseCell className="font-mono font-bold">{account.code}</BaseCell>
-                    <BaseCell>{account.name}</BaseCell>
-                    <BaseCell>
+                  <TableRow key={account.id}>
+                    <TableCell className="font-mono font-bold">{account.code}</TableCell>
+                    <TableCell>{account.name}</TableCell>
+                    <TableCell>
                       <Badge variant="outline" className="capitalize">
                         {account.account_type}
                       </Badge>
-                    </BaseCell>
-                    <BaseCell className="capitalize">{account.normal_side}</BaseCell>
-                    <BaseCell className="text-muted-foreground">{account.pgc_class}</BaseCell>
-                  </BaseRow>
+                    </TableCell>
+                    <TableCell className="capitalize">{account.normal_side}</TableCell>
+                    <TableCell className="text-muted-foreground">{account.pgc_class}</TableCell>
+                  </TableRow>
                 ))
               )}
-            </BaseBody>
-          </BaseTable>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

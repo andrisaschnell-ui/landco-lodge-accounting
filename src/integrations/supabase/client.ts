@@ -10,7 +10,7 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 const createMockQueryBuilder = (table: string) => {
-  const state = { table };
+  const state: { table: string; id?: any; method?: string; body?: any } = { table };
   
   const builder: any = {
     select: () => builder,
