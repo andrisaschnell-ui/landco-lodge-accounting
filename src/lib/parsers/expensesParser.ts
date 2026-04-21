@@ -34,30 +34,32 @@ interface ColMap {
 
 // Map from normalised header text → mapping rule.
 const HEADER_RULES: Array<{ match: RegExp; category: string; is_shared: boolean; property_code: string | null; skip?: boolean }> = [
-  { match: /^LC SALARIES/i,                         category: 'Salaries',         is_shared: true,  property_code: null },
-  { match: /CASUAL WORKERS/i,                       category: 'Casual Labour',    is_shared: true,  property_code: null },
-  { match: /ADVANCE SALARIES/i,                     category: '',                 is_shared: false, property_code: null, skip: true },
-  { match: /OFFICE AND BANK/i,                      category: 'Office',           is_shared: true,  property_code: null },
-  { match: /ADMIN CHARGES/i,                        category: 'Admin',            is_shared: true,  property_code: null },
-  { match: /GAS AND ELECTR/i,                       category: 'Utilities',        is_shared: true,  property_code: null },
-  { match: /MAINTENANCE GENERAL/i,                  category: 'Maintenance',      is_shared: true,  property_code: null },
-  { match: /MAINTENANCE GARDEN/i,                   category: 'Garden & Pool',    is_shared: true,  property_code: null },
-  { match: /SMALL TOOLS/i,                          category: 'Small Tools',      is_shared: true,  property_code: null },
-  { match: /^EQUIPMENT/i,                           category: 'Equipment',        is_shared: true,  property_code: null },
-  { match: /MAINTENANCE VEHICLES/i,                 category: 'Vehicles',         is_shared: true,  property_code: null },
-  { match: /INSURANCE/i,                            category: 'Insurance',        is_shared: true,  property_code: null },
-  { match: /DIESEL|PETROL/i,                        category: 'Fuel',             is_shared: true,  property_code: null },
-  { match: /HOUSE KEEPING|HOUSEKEEPING/i,           category: 'Housekeeping',     is_shared: true,  property_code: null },
-  { match: /MUNICIPAL TAXES|IPRA|TAE|MARINTINE|MARITIME/i, category: 'Taxes',     is_shared: true,  property_code: null },
-  { match: /COMMUNITY/i,                            category: 'Community',        is_shared: true,  property_code: null },
-  { match: /EXPENSES LUZ|^LUZ$/i,                   category: 'House Expense',    is_shared: false, property_code: 'H1' },
-  { match: /EXPENSES AURORA|^AURORA$/i,             category: 'House Expense',    is_shared: false, property_code: 'H2' },
-  { match: /EXPENSES CAJU|^CAJU$/i,                 category: 'House Expense',    is_shared: false, property_code: 'H3' },
-  { match: /EXPENSES COCO|^COCO$/i,                 category: 'House Expense',    is_shared: false, property_code: 'H4' },
-  { match: /SUSPEN[CS]E/i,                          category: '',                 is_shared: false, property_code: null, skip: true },
-  { match: /^BALANCE$/i,                            category: '',                 is_shared: false, property_code: null, skip: true },
-  { match: /NEGU/i,                                 category: '',                 is_shared: false, property_code: null, skip: true },
-  { match: /^TOTAL$/i,                              category: '',                 is_shared: false, property_code: null, skip: true },
+  { match: /^LC SALARIES|^SALARIES\s*&\s*WAGES/i,   category: 'SALARIES & WAGES',                is_shared: true,  property_code: null },
+  { match: /CASUAL WORKERS/i,                       category: 'CASUAL WORKERS AND FOOD ALLOWANCE', is_shared: true, property_code: null },
+  // Advance salaries column is a subtotal inside total salaries — never import as own line
+  { match: /ADVANCE SALARIES/i,                     category: '',                                 is_shared: false, property_code: null, skip: true },
+  { match: /OFFICE AND BANK/i,                      category: 'OFFICE AND BANK CHARGES',          is_shared: true,  property_code: null },
+  { match: /ADMIN CHARGES/i,                        category: 'ADMIN CHARGES (BDO & ANDRISA)',    is_shared: true,  property_code: null },
+  { match: /GAS AND ELECTR/i,                       category: 'GAS AND ELECTRICITY',              is_shared: true,  property_code: null },
+  { match: /MAINTENANCE GENERAL/i,                  category: 'MAINTENANCE GENERAL',              is_shared: true,  property_code: null },
+  { match: /MAINTENANCE GARDEN/i,                   category: 'MAINTENANCE GARDEN & POOL',        is_shared: true,  property_code: null },
+  { match: /SMALL TOOLS/i,                          category: 'SMALL TOOLS',                      is_shared: true,  property_code: null },
+  { match: /^EQUIPMENT/i,                           category: 'EQUIPMENT',                        is_shared: true,  property_code: null },
+  { match: /MAINTENANCE VEHICLES/i,                 category: 'MAINTENANCE VEHICLES',             is_shared: true,  property_code: null },
+  { match: /INSURANCE/i,                            category: 'INSURANCE & LICENSE',              is_shared: true,  property_code: null },
+  { match: /DIESEL|PETROL/i,                        category: 'DIESEL AND PETROL',                is_shared: true,  property_code: null },
+  { match: /HOUSE KEEPING|HOUSEKEEPING/i,           category: 'HOUSE KEEPING',                    is_shared: true,  property_code: null },
+  { match: /MUNICIPAL TAXES|IPRA|TAE|MARINTINE|MARITIME/i, category: 'MARITIME & MUNICIPAL TAXES IPRA & TAE', is_shared: true, property_code: null },
+  { match: /COMMUNITY/i,                            category: 'COMMUNITY',                        is_shared: true,  property_code: null },
+  { match: /EXPENSES LUZ|^LUZ$/i,                   category: 'EXPENSES LUZ',                     is_shared: false, property_code: 'H1' },
+  { match: /EXPENSES AURORA|^AURORA$/i,             category: 'EXPENSES AURORA',                  is_shared: false, property_code: 'H2' },
+  { match: /EXPENSES CAJU|^CAJU$/i,                 category: 'EXPENSES CAJU',                    is_shared: false, property_code: 'H3' },
+  { match: /EXPENSES COCO|^COCO$/i,                 category: 'EXPENSES COCO',                    is_shared: false, property_code: 'H4' },
+  // Suspense is a real category now — import it, but flagged for later review
+  { match: /SUSPEN[CS]E/i,                          category: 'SUSPENSE',                         is_shared: true,  property_code: null },
+  { match: /^BALANCE$/i,                            category: '',                                 is_shared: false, property_code: null, skip: true },
+  { match: /NEGU/i,                                 category: '',                                 is_shared: false, property_code: null, skip: true },
+  { match: /^TOTAL$/i,                              category: '',                                 is_shared: false, property_code: null, skip: true },
 ];
 
 const num = (v: unknown): number => {
@@ -136,7 +138,9 @@ export function parseExpenses(buffer: ArrayBuffer, month: number, year: number):
     const description = str(row[2]);
     // skip blank rows
     if (!dateRaw && !supplier && !description) continue;
-    // skip footer/section rows that have no date AND no numeric data
+    // skip summary / total rows that have no supplier/date but carry totals
+    const upperDesc = description.toUpperCase();
+    if (!dateRaw && !supplier && /^(TOTAL|GRAND TOTAL|SUB TOTAL|SUBTOTAL)$/.test(upperDesc)) continue;
     const date = excelDateToISO(dateRaw);
 
     for (const col of cols) {
