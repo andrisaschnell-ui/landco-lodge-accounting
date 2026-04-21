@@ -289,6 +289,28 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
   const propMap = await getPropertyMap();
   const catMap = await ensureCategories(result.lines.map((l) => l.category));
 
+  // Idempotency: wipe any prior expense / supplier-invoice / JE rows for the same month
+  // so re-uploading the same workbook cleanly replaces the data.
+  const monthStart = `${result.year}-${String(result.month).padStart(2, "0")}-01`;
+  const nextMonth = result.month === 12 ? 1 : result.month + 1;
+  const nextYear = result.month === 12 ? result.year + 1 : result.year;
+  const monthEndExclusive = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+  const { data: priorJEs } = await supabase
+    .from("journal_entries")
+    .select("id")
+    .eq("entry_type", "supplier_invoice")
+    .gte("entry_date", monthStart)
+    .lt("entry_date", monthEndExclusive);
+  const priorJeIds = (priorJEs ?? []).map((j: { id: string }) => j.id);
+
+  await supabase.from("expense_transactions").delete().eq("month", result.month).eq("year", result.year);
+  if (priorJeIds.length) {
+    await supabase.from("supplier_invoices").delete().in("journal_entry_id", priorJeIds);
+    await supabase.from("journal_lines").delete().in("journal_entry_id", priorJeIds);
+    await supabase.from("journal_entries").delete().in("id", priorJeIds);
+  }
+
   if (result.lines.length === 0) {
     await logImport(filename, "expenses", result.month, result.year, 0);
     return 0;
