@@ -4,6 +4,11 @@ import type { ParsedBimResult } from "./parsers/bimTransferParser";
 import type { ParsedMonthEndResult } from "./parsers/monthEndParser";
 import type { ParsedBdoResult } from "./parsers/bdoBankParser";
 import type { ParsedPettyCashResult } from "./parsers/pettyCashParser";
+import type { ParsedExpensesResult } from "./parsers/expensesParser";
+
+// Properties we never write expenses against (excluded by business rule).
+const EXCLUDED_PROPERTY_CODES = new Set(["NEGU"]);
+
 
 async function getEmployeeMap(): Promise<Map<string, string>> {
   const { data } = await supabase.from("employees").select("id, name");
@@ -15,7 +20,10 @@ async function getEmployeeMap(): Promise<Map<string, string>> {
 async function getPropertyMap(): Promise<Map<string, string>> {
   const { data } = await supabase.from("properties").select("id, code");
   const map = new Map<string, string>();
-  data?.forEach((p) => map.set(p.code, p.id));
+  data?.forEach((p) => {
+    if (EXCLUDED_PROPERTY_CODES.has(p.code)) return;
+    map.set(p.code, p.id);
+  });
   return map;
 }
 
