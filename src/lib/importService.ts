@@ -229,3 +229,53 @@ async function logImport(filename: string, fileType: string, month: number, year
     imported_by: user?.id || null,
   });
 }
+
+// Ensure each category in the parsed file exists in expense_categories;
+// returns name → id map.
+async function ensureCategories(names: string[]): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(names.filter(Boolean)));
+  const { data: existing } = await supabase
+    .from("expense_categories")
+    .select("id, name");
+  const map = new Map<string, string>();
+  existing?.forEach((c) => map.set(c.name.toUpperCase(), c.id));
+
+  const missing = unique.filter((n) => !map.has(n.toUpperCase()));
+  if (missing.length > 0) {
+    const { data: inserted, error } = await supabase
+      .from("expense_categories")
+      .insert(missing.map((name) => ({ name, is_shared: true })))
+      .select("id, name");
+    if (error) throw error;
+    inserted?.forEach((c) => map.set(c.name.toUpperCase(), c.id));
+  }
+  return map;
+}
+
+export async function importExpenses(result: ParsedExpensesResult, filename: string) {
+  const propMap = await getPropertyMap();
+  const catMap = await ensureCategories(result.lines.map((l) => l.category));
+
+  const rows = result.lines.map((l) => ({
+    date: l.date || `${result.year}-${String(result.month).padStart(2, "0")}-01`,
+    description: l.supplier ? `${l.supplier} — ${l.description}` : l.description,
+    amount_mzn: l.amount_mzn,
+    is_shared: l.is_shared,
+    month: result.month,
+    year: result.year,
+    category_id: catMap.get(l.category.toUpperCase()) || null,
+    property_id: l.property_code ? propMap.get(l.property_code) || null : null,
+  }));
+
+  if (rows.length === 0) {
+    await logImport(filename, "expenses", result.month, result.year, 0);
+    return 0;
+  }
+
+  const { error } = await supabase.from("expense_transactions").insert(rows);
+  if (error) throw error;
+
+  await logImport(filename, "expenses", result.month, result.year, rows.length);
+  return rows.length;
+}
+
