@@ -252,30 +252,162 @@ async function ensureCategories(names: string[]): Promise<Map<string, string>> {
   return map;
 }
 
+// Resolve account UUIDs by code (e.g. '262', '221', '6111').
+async function getAccountIdMap(codes: string[]): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(codes.filter(Boolean)));
+  const { data } = await supabase.from("accounts").select("id, code").in("code", unique);
+  const map = new Map<string, string>();
+  data?.forEach((a: { id: string; code: string }) => map.set(a.code, a.id));
+  return map;
+}
+
+// Get-or-create supplier by name (case-insensitive).
+async function ensureSuppliers(names: string[]): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
+  const { data: existing } = await supabase.from("suppliers").select("id, name");
+  const map = new Map<string, string>();
+  existing?.forEach((s: { id: string; name: string }) => map.set(s.name.toUpperCase(), s.id));
+  const missing = unique.filter((n) => !map.has(n.toUpperCase()));
+  if (missing.length > 0) {
+    const { data: inserted, error } = await supabase
+      .from("suppliers")
+      .insert(missing.map((name) => ({ name })))
+      .select("id, name");
+    if (error) throw error;
+    inserted?.forEach((s: { id: string; name: string }) => map.set(s.name.toUpperCase(), s.id));
+  }
+  return map;
+}
+
+/**
+ * Import EXPENSES sheet:
+ *  1. Group lines by (supplier, date) → one supplier_invoice + one journal_entry per group.
+ *  2. JE posts Dr <category PGC code> / Cr 262 Suspense (per user choice — to be reassigned later).
+ *  3. Each expense_transaction row is linked back to its journal_entry.
+ */
 export async function importExpenses(result: ParsedExpensesResult, filename: string) {
   const propMap = await getPropertyMap();
   const catMap = await ensureCategories(result.lines.map((l) => l.category));
 
-  const rows = result.lines.map((l) => ({
-    date: l.date || `${result.year}-${String(result.month).padStart(2, "0")}-01`,
-    description: l.supplier ? `${l.supplier} — ${l.description}` : l.description,
-    amount_mzn: l.amount_mzn,
-    is_shared: l.is_shared,
-    month: result.month,
-    year: result.year,
-    category_id: catMap.get(l.category.toUpperCase()) || null,
-    property_id: l.property_code ? propMap.get(l.property_code) || null : null,
-  }));
-
-  if (rows.length === 0) {
+  if (result.lines.length === 0) {
     await logImport(filename, "expenses", result.month, result.year, 0);
     return 0;
   }
 
-  const { error } = await supabase.from("expense_transactions").insert(rows);
-  if (error) throw error;
+  // Pull category → pgc_account_code map so JE lines can hit the right Dr account.
+  const { data: catRows } = await supabase
+    .from("expense_categories")
+    .select("id, name, pgc_account_code");
+  const catCodeById = new Map<string, string | null>();
+  catRows?.forEach((c: { id: string; pgc_account_code: string | null }) =>
+    catCodeById.set(c.id, c.pgc_account_code),
+  );
 
-  await logImport(filename, "expenses", result.month, result.year, rows.length);
-  return rows.length;
+  // Resolve all needed account UUIDs (262 suspense + every category Dr code).
+  const wantedCodes = new Set<string>(["262"]);
+  catRows?.forEach((c: { pgc_account_code: string | null }) => {
+    if (c.pgc_account_code) wantedCodes.add(c.pgc_account_code);
+  });
+  const accountIdByCode = await getAccountIdMap(Array.from(wantedCodes));
+  const suspenseAccountId = accountIdByCode.get("262");
+  if (!suspenseAccountId) {
+    throw new Error("Suspense account (code 262) not found in chart of accounts.");
+  }
+
+  // Suppliers — group by supplier name (blank → "UNKNOWN SUPPLIER").
+  const suppliersForLookup = result.lines.map((l) => l.supplier?.trim() || "UNKNOWN SUPPLIER");
+  const supplierMap = await ensureSuppliers(suppliersForLookup);
+
+  // Group lines: key = supplier|date  → one JE + one supplier_invoice.
+  type GroupKey = string;
+  const groups = new Map<GroupKey, typeof result.lines>();
+  for (const l of result.lines) {
+    const supplier = (l.supplier?.trim() || "UNKNOWN SUPPLIER").toUpperCase();
+    const date = l.date || `${result.year}-${String(result.month).padStart(2, "0")}-01`;
+    const key = `${supplier}|${date}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(l);
+  }
+
+  let inserted = 0;
+
+  for (const [key, lines] of groups) {
+    const [supplierUpper, date] = key.split("|");
+    const supplierId = supplierMap.get(supplierUpper) ?? null;
+    const total = lines.reduce((s, l) => s + (l.amount_mzn || 0), 0);
+    if (total === 0) continue;
+
+    // 1) Journal entry header.
+    const { data: je, error: jeErr } = await supabase
+      .from("journal_entries")
+      .insert({
+        entry_date: date,
+        description: `Supplier invoice — ${supplierUpper} (${result.month}/${result.year})`,
+        entry_type: "supplier_invoice",
+        reference: filename,
+        posted: false,
+      })
+      .select("id")
+      .single();
+    if (jeErr) throw jeErr;
+
+    // 2) Journal lines: one Dr per line, one consolidated Cr Suspense.
+    const jLines: Array<{ journal_entry_id: string; account_id: string; debit: number; credit: number; memo: string | null }> = [];
+    for (const l of lines) {
+      const catId = catMap.get(l.category.toUpperCase());
+      const code = catId ? catCodeById.get(catId) : null;
+      const drAccountId = code ? accountIdByCode.get(code) : null;
+      if (!drAccountId) continue; // skip lines we cannot post — still recorded as expense_transaction below
+      jLines.push({
+        journal_entry_id: je.id,
+        account_id: drAccountId,
+        debit: l.amount_mzn,
+        credit: 0,
+        memo: l.description,
+      });
+    }
+    jLines.push({
+      journal_entry_id: je.id,
+      account_id: suspenseAccountId,
+      debit: 0,
+      credit: total,
+      memo: `Suspense — awaiting payment account reclassification`,
+    });
+    if (jLines.length > 1) {
+      const { error: jlErr } = await supabase.from("journal_lines").insert(jLines);
+      if (jlErr) throw jlErr;
+    }
+
+    // 3) supplier_invoice header (one per group).
+    await supabase.from("supplier_invoices").insert({
+      supplier_id: supplierId,
+      journal_entry_id: je.id,
+      invoice_date: date,
+      total_amount: total,
+      amount_excl: total,
+      vat_amount: 0,
+      description: lines.map((l) => l.description).join("; ").slice(0, 500),
+      allocation: lines[0].is_shared ? "shared" : lines[0].property_code ?? null,
+    });
+
+    // 4) expense_transactions linked to this JE.
+    const expRows = lines.map((l) => ({
+      date,
+      description: l.supplier ? `${l.supplier} — ${l.description}` : l.description,
+      amount_mzn: l.amount_mzn,
+      is_shared: l.is_shared,
+      month: result.month,
+      year: result.year,
+      category_id: catMap.get(l.category.toUpperCase()) || null,
+      property_id: l.property_code ? propMap.get(l.property_code) || null : null,
+      journal_entry_id: je.id,
+    }));
+    const { error: expErr } = await supabase.from("expense_transactions").insert(expRows);
+    if (expErr) throw expErr;
+    inserted += expRows.length;
+  }
+
+  await logImport(filename, "expenses", result.month, result.year, inserted);
+  return inserted;
 }
 
