@@ -7,12 +7,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/sidebar-table"; // Assuming sidebar-table or ui/table
+} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// Fallback to basic table if sidebar-table doesn't exist
-import { Table as BaseTable, TableBody as BaseBody, TableCell as BaseCell, TableHead as BaseHead, TableHeader as BaseHeader, TableRow as BaseRow } from "@/components/ui/table";
 
 export default function ChartOfAccounts() {
   const { data: accounts, isLoading } = useQuery({
