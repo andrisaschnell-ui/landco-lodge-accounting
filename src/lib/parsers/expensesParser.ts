@@ -138,7 +138,9 @@ export function parseExpenses(buffer: ArrayBuffer, month: number, year: number):
     const description = str(row[2]);
     // skip blank rows
     if (!dateRaw && !supplier && !description) continue;
-    // skip footer/section rows that have no date AND no numeric data
+    // skip summary / total rows that have no supplier/date but carry totals
+    const upperDesc = description.toUpperCase();
+    if (!dateRaw && !supplier && /^(TOTAL|GRAND TOTAL|SUB TOTAL|SUBTOTAL)$/.test(upperDesc)) continue;
     const date = excelDateToISO(dateRaw);
 
     for (const col of cols) {
