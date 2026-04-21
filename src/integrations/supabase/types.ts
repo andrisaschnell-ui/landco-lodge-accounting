@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_periods: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          id: string
+          is_closed: boolean
+          month: number
+          year: number
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          id?: string
+          is_closed?: boolean
+          month: number
+          year: number
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          id?: string
+          is_closed?: boolean
+          month?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      accounts: {
+        Row: {
+          account_class: number
+          account_type: string
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          normal_side: string
+          parent_code: string | null
+          pgc_class: string | null
+        }
+        Insert: {
+          account_class: number
+          account_type: string
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          normal_side: string
+          parent_code?: string | null
+          pgc_class?: string | null
+        }
+        Update: {
+          account_class?: number
+          account_type?: string
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          normal_side?: string
+          parent_code?: string | null
+          pgc_class?: string | null
+        }
+        Relationships: []
+      }
       bank_accounts: {
         Row: {
           account_number: string | null
@@ -22,6 +88,7 @@ export type Database = {
           currency: string
           id: string
           name: string
+          pgc_account_code: string | null
           updated_at: string
         }
         Insert: {
@@ -31,6 +98,7 @@ export type Database = {
           currency?: string
           id?: string
           name: string
+          pgc_account_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -40,6 +108,7 @@ export type Database = {
           currency?: string
           id?: string
           name?: string
+          pgc_account_code?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -54,6 +123,7 @@ export type Database = {
           debit: number | null
           description: string
           id: string
+          journal_entry_id: string | null
           month: number
           reference: string | null
           year: number
@@ -67,6 +137,7 @@ export type Database = {
           debit?: number | null
           description: string
           id?: string
+          journal_entry_id?: string | null
           month: number
           reference?: string | null
           year: number
@@ -80,6 +151,7 @@ export type Database = {
           debit?: number | null
           description?: string
           id?: string
+          journal_entry_id?: string | null
           month?: number
           reference?: string | null
           year?: number
@@ -90,6 +162,13 @@ export type Database = {
             columns: ["bank_account_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -219,24 +298,47 @@ export type Database = {
       }
       expense_categories: {
         Row: {
+          category_type: string | null
           created_at: string
           id: string
           is_shared: boolean
           name: string
+          name_en: string | null
+          name_pt: string | null
+          parent_id: string | null
+          pgc_account_code: string | null
         }
         Insert: {
+          category_type?: string | null
           created_at?: string
           id?: string
           is_shared?: boolean
           name: string
+          name_en?: string | null
+          name_pt?: string | null
+          parent_id?: string | null
+          pgc_account_code?: string | null
         }
         Update: {
+          category_type?: string | null
           created_at?: string
           id?: string
           is_shared?: boolean
           name?: string
+          name_en?: string | null
+          name_pt?: string | null
+          parent_id?: string | null
+          pgc_account_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expense_transactions: {
         Row: {
@@ -247,6 +349,7 @@ export type Database = {
           description: string
           id: string
           is_shared: boolean
+          journal_entry_id: string | null
           month: number
           property_id: string | null
           shareholder_id: string | null
@@ -261,6 +364,7 @@ export type Database = {
           description: string
           id?: string
           is_shared?: boolean
+          journal_entry_id?: string | null
           month: number
           property_id?: string | null
           shareholder_id?: string | null
@@ -275,6 +379,7 @@ export type Database = {
           description?: string
           id?: string
           is_shared?: boolean
+          journal_entry_id?: string | null
           month?: number
           property_id?: string | null
           shareholder_id?: string | null
@@ -287,6 +392,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_transactions_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
           {
@@ -353,6 +465,7 @@ export type Database = {
           description: string | null
           guest_name: string | null
           id: string
+          journal_entry_id: string | null
           month: number
           property_id: string | null
           updated_at: string
@@ -366,6 +479,7 @@ export type Database = {
           description?: string | null
           guest_name?: string | null
           id?: string
+          journal_entry_id?: string | null
           month: number
           property_id?: string | null
           updated_at?: string
@@ -379,12 +493,20 @@ export type Database = {
           description?: string | null
           guest_name?: string | null
           id?: string
+          journal_entry_id?: string | null
           month?: number
           property_id?: string | null
           updated_at?: string
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "income_transactions_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "income_transactions_property_id_fkey"
             columns: ["property_id"]
@@ -424,6 +546,92 @@ export type Database = {
         }
         Relationships: []
       }
+      invoices: {
+        Row: {
+          at_hash: string | null
+          at_qr_code: string | null
+          client_address: string | null
+          client_name: string
+          client_nuit: string | null
+          created_at: string
+          currency: string
+          due_date: string | null
+          exchange_rate: number | null
+          id: string
+          income_tx_id: string | null
+          invoice_date: string
+          invoice_number: string
+          invoice_series: string
+          issued_by: string | null
+          journal_entry_id: string | null
+          line_items: Json
+          property_id: string | null
+          status: string
+          subtotal_mzn: number
+          total_mzn: number
+          updated_at: string
+          vat_amount_mzn: number
+        }
+        Insert: {
+          at_hash?: string | null
+          at_qr_code?: string | null
+          client_address?: string | null
+          client_name: string
+          client_nuit?: string | null
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          exchange_rate?: number | null
+          id?: string
+          income_tx_id?: string | null
+          invoice_date: string
+          invoice_number: string
+          invoice_series?: string
+          issued_by?: string | null
+          journal_entry_id?: string | null
+          line_items?: Json
+          property_id?: string | null
+          status?: string
+          subtotal_mzn?: number
+          total_mzn?: number
+          updated_at?: string
+          vat_amount_mzn?: number
+        }
+        Update: {
+          at_hash?: string | null
+          at_qr_code?: string | null
+          client_address?: string | null
+          client_name?: string
+          client_nuit?: string | null
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          exchange_rate?: number | null
+          id?: string
+          income_tx_id?: string | null
+          invoice_date?: string
+          invoice_number?: string
+          invoice_series?: string
+          issued_by?: string | null
+          journal_entry_id?: string | null
+          line_items?: Json
+          property_id?: string | null
+          status?: string
+          subtotal_mzn?: number
+          total_mzn?: number
+          updated_at?: string
+          vat_amount_mzn?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       irps_payments: {
         Row: {
           amount: number
@@ -454,8 +662,93 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          entry_date: string
+          entry_type: string
+          id: string
+          posted: boolean
+          posted_at: string | null
+          posted_by: string | null
+          property_id: string | null
+          reference: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          entry_date: string
+          entry_type: string
+          id?: string
+          posted?: boolean
+          posted_at?: string | null
+          posted_by?: string | null
+          property_id?: string | null
+          reference?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          posted?: boolean
+          posted_at?: string | null
+          posted_by?: string | null
+          property_id?: string | null
+          reference?: string | null
+        }
+        Relationships: []
+      }
+      journal_lines: {
+        Row: {
+          account_id: string
+          credit: number
+          debit: number
+          id: string
+          journal_entry_id: string
+          memo: string | null
+        }
+        Insert: {
+          account_id: string
+          credit?: number
+          debit?: number
+          id?: string
+          journal_entry_id: string
+          memo?: string | null
+        }
+        Update: {
+          account_id?: string
+          credit?: number
+          debit?: number
+          id?: string
+          journal_entry_id?: string
+          memo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       petty_cash_transactions: {
         Row: {
+          allocation: string | null
           balance: number | null
           created_at: string
           credit: number | null
@@ -463,10 +756,17 @@ export type Database = {
           debit: number | null
           description: string
           id: string
+          journal_entry_id: string | null
           month: number
+          net_amount: number | null
+          reference: string | null
+          source_file: string | null
+          supplier: string | null
+          vat_amount: number | null
           year: number
         }
         Insert: {
+          allocation?: string | null
           balance?: number | null
           created_at?: string
           credit?: number | null
@@ -474,10 +774,17 @@ export type Database = {
           debit?: number | null
           description: string
           id?: string
+          journal_entry_id?: string | null
           month: number
+          net_amount?: number | null
+          reference?: string | null
+          source_file?: string | null
+          supplier?: string | null
+          vat_amount?: number | null
           year: number
         }
         Update: {
+          allocation?: string | null
           balance?: number | null
           created_at?: string
           credit?: number | null
@@ -485,10 +792,24 @@ export type Database = {
           debit?: number | null
           description?: string
           id?: string
+          journal_entry_id?: string | null
           month?: number
+          net_amount?: number | null
+          reference?: string | null
+          source_file?: string | null
+          supplier?: string | null
+          vat_amount?: number | null
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_transactions_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -700,6 +1021,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          journal_entry_id: string | null
           month: number
           status: string
           total_gross: number | null
@@ -713,6 +1035,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          journal_entry_id?: string | null
           month: number
           status?: string
           total_gross?: number | null
@@ -726,6 +1049,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          journal_entry_id?: string | null
           month?: number
           status?: string
           total_gross?: number | null
@@ -736,7 +1060,15 @@ export type Database = {
           updated_at?: string
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "salary_runs_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shareholder_balances: {
         Row: {
@@ -832,6 +1164,81 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
+      }
+      supplier_invoices: {
+        Row: {
+          allocation: string | null
+          amount_excl: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          journal_entry_id: string | null
+          supplier_id: string | null
+          total_amount: number | null
+          vat_amount: number | null
+        }
+        Insert: {
+          allocation?: string | null
+          amount_excl?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          journal_entry_id?: string | null
+          supplier_id?: string | null
+          total_amount?: number | null
+          vat_amount?: number | null
+        }
+        Update: {
+          allocation?: string | null
+          amount_excl?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          journal_entry_id?: string | null
+          supplier_id?: string | null
+          total_amount?: number | null
+          vat_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_invoices_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_invoices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
