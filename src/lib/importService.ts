@@ -379,22 +379,20 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
       const catId = catMap.get(l.category.toUpperCase());
       const code = catId ? catCodeById.get(catId) : null;
       const drAccountId = code ? accountIdByCode.get(code) : null;
-      if (!drAccountId) continue; // skip lines we cannot post — still recorded as expense_transaction below
-      jLines.push({
-        journal_entry_id: je.id,
-        account_id: drAccountId,
-        debit: l.amount_mzn,
-        credit: 0,
-        memo: l.description,
-      });
+      if (!drAccountId) continue;
+      // Negative amounts (refunds/corrections) flip to the credit side so DB
+      // check constraints (debit >= 0, credit >= 0) stay satisfied.
+      if (l.amount_mzn >= 0) {
+        jLines.push({ journal_entry_id: je.id, account_id: drAccountId, debit: l.amount_mzn, credit: 0, memo: l.description });
+      } else {
+        jLines.push({ journal_entry_id: je.id, account_id: drAccountId, debit: 0, credit: -l.amount_mzn, memo: l.description });
+      }
     }
-    jLines.push({
-      journal_entry_id: je.id,
-      account_id: suspenseAccountId,
-      debit: 0,
-      credit: total,
-      memo: `Suspense — awaiting payment account reclassification`,
-    });
+    if (total >= 0) {
+      jLines.push({ journal_entry_id: je.id, account_id: suspenseAccountId, debit: 0, credit: total, memo: `Suspense — awaiting payment account reclassification` });
+    } else {
+      jLines.push({ journal_entry_id: je.id, account_id: suspenseAccountId, debit: -total, credit: 0, memo: `Suspense reversal` });
+    }
     if (jLines.length > 1) {
       const { error: jlErr } = await supabase.from("journal_lines").insert(jLines);
       if (jlErr) throw jlErr;
