@@ -333,7 +333,7 @@ export default function UploadData() {
                 <p className="text-xs text-muted-foreground mt-1">.xlsx files — e.g. "01 BDO Bank Control 2026.xlsx"</p>
                 <Input
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept={fileType === "cash_control_zip" ? ".zip" : ".xlsx,.xls"}
                   className="hidden"
                   onChange={handleFileSelect}
                 />
