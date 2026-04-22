@@ -111,12 +111,14 @@ function parseSheetTransactions(
       descUp.includes('SALDO TRANSPORTE');
 
     if (isCarryForward) {
-      // Capture as opening balance (first occurrence wins)
+      // Capture as opening balance (first occurrence wins).
+      // Layout: opening amount appears in Entradas (col 6) and Saldo (col 8) is the same.
       if (!opening) {
         const dateVal = rowD?.[1] ?? row[1];
+        const openAmt = balance || entradas || saidas;
         opening = {
           currency,
-          opening_balance: balance,
+          opening_balance: openAmt,
           date: excelDateToISO(dateVal, year, month),
         };
       }
