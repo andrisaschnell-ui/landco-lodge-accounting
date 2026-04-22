@@ -28,7 +28,9 @@ export interface ParsedBdoResult {
 
 const num = (v: unknown): number => {
   if (v == null || v === '') return 0;
-  const n = Number(v);
+  // Strip thousand separators (commas) that XLSX produces with raw:false
+  const cleaned = typeof v === 'string' ? v.replace(/,/g, '').trim() : v;
+  const n = Number(cleaned);
   return isNaN(n) ? 0 : n;
 };
 const str = (v: unknown): string => (v == null ? '' : String(v).trim());
