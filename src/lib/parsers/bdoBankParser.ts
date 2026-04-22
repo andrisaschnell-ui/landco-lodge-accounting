@@ -28,8 +28,10 @@ export interface ParsedBdoResult {
 
 const num = (v: unknown): number => {
   if (v == null || v === '') return 0;
-  // Strip thousand separators (commas) that XLSX produces with raw:false
-  const cleaned = typeof v === 'string' ? v.replace(/,/g, '').trim() : v;
+  // Strip thousand separators and currency symbols ($, USD, MZN) from raw:false output
+  const cleaned = typeof v === 'string'
+    ? v.replace(/[,$\s]/g, '').replace(/USD|MZN/gi, '').trim()
+    : v;
   const n = Number(cleaned);
   return isNaN(n) ? 0 : n;
 };
