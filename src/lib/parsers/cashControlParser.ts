@@ -70,6 +70,8 @@ const isBalanceRow = (desc: string): boolean => {
     d.includes("BALANCE BF") ||
     d === "BALANCE" ||
     d.includes("BALANCE END") ||
+    d.includes("BALANCE CARRY") ||
+    d.includes("CARRY FORWARD") ||
     d.includes("SALDO TRANSPORTE") ||
     d.includes("SALDO ANTERIOR")
   );
