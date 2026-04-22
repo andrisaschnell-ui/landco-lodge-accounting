@@ -11,6 +11,7 @@ import jwt from "jsonwebtoken";
 import journalRoutes from './routes/journal.js';
 import invoiceRoutes from './routes/invoices.js';
 import reportRoutes from './routes/reports.js';
+import cashControlRoutes from './routes/cash_control.js';
 
 const { Pool } = pkg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -29,6 +30,8 @@ const TABLES = new Set([
   "shareholder_balances","import_log","profiles","user_roles",
   // Accounting Upgrade Tables
   "accounts", "accounting_periods",
+  // Cash Control (isolated notebook)
+  "cash_sheets","cash_transactions","cash_dropdown_options","cash_allocation_columns",
 ]);
 
 function requireAuth(req, res, next) {
@@ -97,6 +100,7 @@ app.get("/auth/me", requireAuth, (req, res) => res.json({ user: req.user }));
 app.use('/api/journal', journalRoutes(pool, TABLES, requireAuth));
 app.use('/api/invoices', invoiceRoutes(pool, TABLES, requireAuth));
 app.use('/api/reports', reportRoutes(pool, requireAuth));
+app.use('/api/cash-control', cashControlRoutes(pool, requireAuth));
 
 // ---------- generic table API ----------
 app.get("/api/:table", requireAuth, async (req, res) => {
