@@ -187,44 +187,85 @@ export default function Transactions() {
         </TabsContent>
 
         <TabsContent value="bank">
-          <Card>
-            <CardHeader><CardTitle>Bank Transactions</CardTitle></CardHeader>
-            <CardContent>
-              {bankTx && bankTx.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Debit</TableHead>
-                      <TableHead className="text-right">Credit</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bankTx.map((t: any) => (
-                      <TableRow key={t.id}>
-                        <TableCell>{t.date ?? "—"}</TableCell>
-                        <TableCell>
-                          {t.bank_accounts?.name ?? "—"}
-                          {t.bank_accounts?.currency && (
-                            <span className="ml-1 text-[10px] text-muted-foreground">{t.bank_accounts.currency}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{t.description}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.debit ?? 0)}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.credit ?? 0)}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.balance ?? 0)}</TableCell>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Opening Balances (Carry Forward)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {openingBalances && openingBalances.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Account</TableHead>
+                        <TableHead className="text-right">Opening Balance</TableHead>
+                        <TableHead>Source</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-muted-foreground py-8 text-center">No bank transactions yet.</p>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {openingBalances.map((o: any) => (
+                        <TableRow key={o.id}>
+                          <TableCell>{String(o.year)}-{String(o.month).padStart(2, "0")}</TableCell>
+                          <TableCell>
+                            {o.bank_accounts?.name ?? "—"}
+                            {o.bank_accounts?.currency && (
+                              <span className="ml-1 text-[10px] text-muted-foreground">{o.bank_accounts.currency}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">{formatMZN(o.opening_balance ?? 0)}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate">{o.source_file ?? "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-muted-foreground py-4 text-center text-sm">
+                    No opening balances recorded yet. They are captured automatically from "BALANCE CARRY FORWARD" rows when uploading BIM Bank Control sheets.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Bank Transactions</CardTitle></CardHeader>
+              <CardContent>
+                {bankTx && bankTx.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Account</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Debit</TableHead>
+                        <TableHead className="text-right">Credit</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bankTx.map((t: any) => (
+                        <TableRow key={t.id}>
+                          <TableCell>{t.date ?? "—"}</TableCell>
+                          <TableCell>
+                            {t.bank_accounts?.name ?? "—"}
+                            {t.bank_accounts?.currency && (
+                              <span className="ml-1 text-[10px] text-muted-foreground">{t.bank_accounts.currency}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{t.description}</TableCell>
+                          <TableCell className="text-right">{formatMZN(t.debit ?? 0)}</TableCell>
+                          <TableCell className="text-right">{formatMZN(t.credit ?? 0)}</TableCell>
+                          <TableCell className="text-right">{formatMZN(t.balance ?? 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-muted-foreground py-8 text-center">No bank transactions yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="petty">
