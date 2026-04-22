@@ -230,6 +230,13 @@ export default function UploadData() {
         case "invoices":
           imported = await importInvoices(parseInvoices(buffer, m, y), state.file.name);
           break;
+        case "cash_control_zip": {
+          const res = await parseCashControlZip(buffer, y);
+          const imp = await importCashControl(res);
+          imported = imp.petty_cash + imp.emola + imp.mpesa;
+          toast({ title: "Cash Control imported", description: `Petty Cash: ${imp.petty_cash} · Emola: ${imp.emola} · Mpesa: ${imp.mpesa}` });
+          break;
+        }
       }
 
       setState((s) => ({ ...s, status: "success", recordCount: imported }));
