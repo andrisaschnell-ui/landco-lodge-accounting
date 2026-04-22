@@ -194,7 +194,12 @@ export default function Transactions() {
                     {bankTx.map((t: any) => (
                       <TableRow key={t.id}>
                         <TableCell>{t.date ?? "—"}</TableCell>
-                        <TableCell>{t.bank_accounts?.name ?? "—"}</TableCell>
+                        <TableCell>
+                          {t.bank_accounts?.name ?? "—"}
+                          {t.bank_accounts?.currency && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">{t.bank_accounts.currency}</span>
+                          )}
+                        </TableCell>
                         <TableCell>{t.description}</TableCell>
                         <TableCell className="text-right">{formatMZN(t.debit ?? 0)}</TableCell>
                         <TableCell className="text-right">{formatMZN(t.credit ?? 0)}</TableCell>
