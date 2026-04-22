@@ -113,6 +113,47 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_opening_balances: {
+        Row: {
+          bank_account_id: string
+          created_at: string
+          id: string
+          month: number
+          opening_balance: number
+          source_file: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          bank_account_id: string
+          created_at?: string
+          id?: string
+          month: number
+          opening_balance?: number
+          source_file?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          bank_account_id?: string
+          created_at?: string
+          id?: string
+          month?: number
+          opening_balance?: number
+          source_file?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_opening_balances_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_transactions: {
         Row: {
           balance: number | null

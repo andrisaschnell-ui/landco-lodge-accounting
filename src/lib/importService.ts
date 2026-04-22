@@ -209,6 +209,22 @@ export async function importBdoBank(result: ParsedBdoResult, filename: string) {
     if (error) throw error;
   }
 
+  // Persist opening balances (carry-forward) per BIM account.
+  for (const ob of result.openingBalances) {
+    const bankId = ob.currency === "USD" ? bimUsd : bimMzn;
+    if (!bankId) continue;
+    await supabase.from("bank_opening_balances").upsert(
+      {
+        bank_account_id: bankId,
+        month: result.month,
+        year: result.year,
+        opening_balance: ob.opening_balance,
+        source_file: filename,
+      },
+      { onConflict: "bank_account_id,month,year" }
+    );
+  }
+
   await logImport(filename, "bdo_bank", result.month, result.year, rows.length);
   return rows.length;
 }
