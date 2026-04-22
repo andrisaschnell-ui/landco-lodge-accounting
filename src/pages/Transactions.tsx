@@ -55,6 +55,18 @@ export default function Transactions() {
     },
   });
 
+  const { data: openingBalances } = useQuery({
+    queryKey: ["bank-opening-balances"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("bank_opening_balances")
+        .select("*, bank_accounts(name, currency)")
+        .order("year", { ascending: false })
+        .order("month", { ascending: false });
+      return data ?? [];
+    },
+  });
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Transactions</h1>
