@@ -13,8 +13,15 @@ export interface ParsedBankTransaction {
   currency: string;
 }
 
+export interface ParsedOpeningBalance {
+  currency: string;
+  opening_balance: number;
+  date: string;
+}
+
 export interface ParsedBdoResult {
   transactions: ParsedBankTransaction[];
+  openingBalances: ParsedOpeningBalance[];
   month: number;
   year: number;
 }
