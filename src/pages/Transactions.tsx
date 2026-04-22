@@ -12,11 +12,21 @@ export default function Transactions() {
   const { data: income } = useQuery({
     queryKey: ["income-transactions"],
     queryFn: async () => {
-      // Join with invoices to see if issued
       const { data } = await supabase
         .from("income_transactions")
         .select("*, properties(name, code), invoices(id, invoice_number, status)")
         .order("date", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: invoiceIncome } = useQuery({
+    queryKey: ["invoice-income"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, invoice_date, client_name, subtotal_mzn, vat_amount_mzn, total_mzn, status")
+        .order("invoice_date", { ascending: false });
       return data ?? [];
     },
   });
@@ -32,7 +42,7 @@ export default function Transactions() {
   const { data: bankTx } = useQuery({
     queryKey: ["bank-transactions"],
     queryFn: async () => {
-      const { data } = await supabase.from("bank_transactions").select("*, bank_accounts(name)").order("date", { ascending: false });
+      const { data } = await supabase.from("bank_transactions").select("*, bank_accounts(name, currency)").order("date", { ascending: false });
       return data ?? [];
     },
   });
