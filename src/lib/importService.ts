@@ -5,6 +5,7 @@ import type { ParsedMonthEndResult } from "./parsers/monthEndParser";
 import type { ParsedBdoResult } from "./parsers/bdoBankParser";
 import type { ParsedPettyCashResult } from "./parsers/pettyCashParser";
 import type { ParsedExpensesResult } from "./parsers/expensesParser";
+import type { ParsedInvoicesResult } from "./parsers/invoicesParser";
 
 // Properties we never write expenses against (excluded by business rule).
 const EXCLUDED_PROPERTY_CODES = new Set(["NEGU"]);
@@ -170,9 +171,26 @@ export async function importMonthEnd(result: ParsedMonthEndResult, filename: str
   return count;
 }
 
+/**
+ * Import BIM Bank Control sheets (MZN + USD).
+ * - Each transaction links to the matching bank account by currency.
+ * - Re-importing the same month wipes prior bank rows for those BIM accounts.
+ */
 export async function importBdoBank(result: ParsedBdoResult, filename: string) {
   const bankMap = await getBankAccountMap();
-  const bdoId = bankMap.get("BDO CURRENT") || bankMap.get("BDO") || null;
+  const bimMzn = bankMap.get("BIM MZN") || null;
+  const bimUsd = bankMap.get("BIM USD") || null;
+
+  // Idempotency: clear prior month rows for BIM accounts only.
+  const bimIds = [bimMzn, bimUsd].filter(Boolean) as string[];
+  if (bimIds.length) {
+    await supabase
+      .from("bank_transactions")
+      .delete()
+      .eq("month", result.month)
+      .eq("year", result.year)
+      .in("bank_account_id", bimIds);
+  }
 
   const rows = result.transactions.map((t) => ({
     date: t.date || null,
@@ -181,40 +199,172 @@ export async function importBdoBank(result: ParsedBdoResult, filename: string) {
     debit: t.debit,
     credit: t.credit,
     balance: t.balance,
-    bank_account_id: bdoId,
+    bank_account_id: t.currency === "USD" ? bimUsd : bimMzn,
     month: result.month,
     year: result.year,
   }));
 
-  const { error } = await supabase.from("bank_transactions").insert(rows);
-  if (error) throw error;
+  if (rows.length > 0) {
+    const { error } = await supabase.from("bank_transactions").insert(rows);
+    if (error) throw error;
+  }
 
   await logImport(filename, "bdo_bank", result.month, result.year, rows.length);
   return rows.length;
 }
 
+/**
+ * Import Petty Cash + Pre-paid sheets — both treated as suspense payments
+ * (no actual outgoing payment to a third party yet). Full row context
+ * (supplier, allocation, ref, source sheet) is preserved for the
+ * Suspense Review screen.
+ */
 export async function importPettyCash(results: ParsedPettyCashResult[], filename: string) {
+  // Idempotency: wipe prior month rows for these source files.
+  const m0 = results[0]?.month;
+  const y0 = results[0]?.year;
+  if (m0 && y0) {
+    await supabase
+      .from("petty_cash_transactions")
+      .delete()
+      .eq("month", m0)
+      .eq("year", y0);
+  }
+
   let total = 0;
   for (const result of results) {
     const rows = result.transactions.map((t) => ({
       date: t.date || null,
-      description: `[${result.sheetName}] ${t.description}`,
+      description: t.description,
+      reference: t.ref || null,
+      supplier: t.supplier || null,
+      allocation: t.allocation || null,
       credit: t.credit,
       debit: t.debit,
       balance: t.balance,
       month: result.month,
       year: result.year,
+      source_file: result.sheetName,
     }));
 
-    const { error } = await supabase.from("petty_cash_transactions").insert(rows);
-    if (error) throw error;
-    total += rows.length;
+    if (rows.length > 0) {
+      const { error } = await supabase.from("petty_cash_transactions").insert(rows);
+      if (error) throw error;
+      total += rows.length;
+    }
   }
 
   const m = results[0]?.month || 1;
   const y = results[0]?.year || 2026;
   await logImport(filename, "petty_cash", m, y, total);
   return total;
+}
+
+/**
+ * Import the "Invoices" sheet of the BDO Bank Control workbook.
+ * - Creates one `invoices` row per line (status = 'imported').
+ * - Creates one journal entry per line: Dr 11 Debtors / Cr 71 Sales + Cr 4432 IVA.
+ *   The exact accounts are looked up by code; if not found, the JE is skipped
+ *   but the invoice row is still saved.
+ * - Idempotent: deletes prior rows for the same month/year before re-importing.
+ */
+export async function importInvoices(result: ParsedInvoicesResult, filename: string) {
+  const monthStart = `${result.year}-${String(result.month).padStart(2, "0")}-01`;
+  const nextMonth = result.month === 12 ? 1 : result.month + 1;
+  const nextYear = result.month === 12 ? result.year + 1 : result.year;
+  const monthEndExclusive = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+  // Idempotency: clear prior imported invoices + their JEs for this month.
+  const { data: priorInvs } = await supabase
+    .from("invoices")
+    .select("id, journal_entry_id")
+    .gte("invoice_date", monthStart)
+    .lt("invoice_date", monthEndExclusive)
+    .eq("status", "imported");
+  const priorJeIds = (priorInvs ?? [])
+    .map((i: { journal_entry_id: string | null }) => i.journal_entry_id)
+    .filter(Boolean) as string[];
+  const priorInvIds = (priorInvs ?? []).map((i: { id: string }) => i.id);
+
+  if (priorInvIds.length) {
+    await supabase.from("invoices").delete().in("id", priorInvIds);
+  }
+  if (priorJeIds.length) {
+    await supabase.from("journal_lines").delete().in("journal_entry_id", priorJeIds);
+    await supabase.from("journal_entries").delete().in("id", priorJeIds);
+  }
+
+  if (result.invoices.length === 0) {
+    await logImport(filename, "invoices", result.month, result.year, 0);
+    return 0;
+  }
+
+  // Look up posting accounts (best effort).
+  const accountIdByCode = await getAccountIdMap(["11", "71", "4432"]);
+  const debtorsId = accountIdByCode.get("11");
+  const salesId = accountIdByCode.get("71");
+  const ivaId = accountIdByCode.get("4432");
+
+  let inserted = 0;
+  for (const inv of result.invoices) {
+    let jeId: string | null = null;
+
+    // Create a JE only if posting accounts exist.
+    if (debtorsId && salesId) {
+      const { data: je } = await supabase
+        .from("journal_entries")
+        .insert({
+          entry_date: inv.date,
+          description: `Invoice ${inv.invoice_no || ""} — ${inv.description}`.slice(0, 255),
+          entry_type: "sales_invoice",
+          reference: filename,
+          posted: false,
+        })
+        .select("id")
+        .single();
+      jeId = je?.id ?? null;
+
+      if (jeId) {
+        const jLines = [
+          { journal_entry_id: jeId, account_id: debtorsId, debit: inv.total_mzn, credit: 0, memo: inv.description },
+          { journal_entry_id: jeId, account_id: salesId, debit: 0, credit: inv.amount_excl_mzn, memo: "Sales" },
+        ];
+        if (inv.iva_mzn > 0 && ivaId) {
+          jLines.push({ journal_entry_id: jeId, account_id: ivaId, debit: 0, credit: inv.iva_mzn, memo: "IVA 16%" });
+        } else if (inv.iva_mzn > 0) {
+          // No IVA account → roll IVA into sales line so the JE balances.
+          jLines[1] = { ...jLines[1], credit: inv.amount_excl_mzn + inv.iva_mzn };
+        }
+        await supabase.from("journal_lines").insert(jLines);
+      }
+    }
+
+    await supabase.from("invoices").insert({
+      invoice_number: inv.invoice_no
+        ? `IMP ${result.year}/${inv.invoice_no}`
+        : `IMP ${result.year}/${result.month}-${inserted + 1}`,
+      invoice_series: "IMP",
+      invoice_date: inv.date,
+      client_name: inv.description.slice(0, 200) || "—",
+      line_items: [{
+        description: inv.description,
+        qty: 1,
+        unit: inv.amount_excl_mzn,
+        vat_rate: inv.amount_excl_mzn ? inv.iva_mzn / inv.amount_excl_mzn : 0,
+        amount: inv.total_mzn,
+      }],
+      subtotal_mzn: inv.amount_excl_mzn,
+      vat_amount_mzn: inv.iva_mzn,
+      total_mzn: inv.total_mzn,
+      currency: "MZN",
+      status: "imported",
+      journal_entry_id: jeId,
+    });
+    inserted += 1;
+  }
+
+  await logImport(filename, "invoices", result.month, result.year, inserted);
+  return inserted;
 }
 
 async function logImport(filename: string, fileType: string, month: number, year: number, recordsImported: number) {
