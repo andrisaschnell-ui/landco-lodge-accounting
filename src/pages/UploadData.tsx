@@ -14,6 +14,7 @@ import { parseBdoBank } from "@/lib/parsers/bdoBankParser";
 import { parsePettyCash } from "@/lib/parsers/pettyCashParser";
 import { parseExpenses } from "@/lib/parsers/expensesParser";
 import { parseInvoices } from "@/lib/parsers/invoicesParser";
+import { parseCashControlZip } from "@/lib/parsers/cashControlParser";
 import {
   importSalary,
   importBimTransfers,
@@ -23,8 +24,9 @@ import {
   importExpenses,
   importInvoices,
 } from "@/lib/importService";
+import { importCashControl } from "@/lib/cashControlImport";
 
-type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices";
+type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
 
 interface UploadState {
@@ -43,6 +45,7 @@ const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string 
   { value: "bim_transfer", label: "BIM Salary Transfers", desc: "Salary transfer list (name, NIB, net salary) from salary sheet", sheet: "Folha de salarios" },
   { value: "bdo_bank", label: "BIM Bank Control", desc: "Bank transactions from BIM Bank Control MZN + USD sheets", sheet: "BIM Bank Control Mtn + USD" },
   { value: "petty_cash", label: "Petty Cash + Pre-paid", desc: "Cash transactions from Petty cash and Pre-paid sheets — booked to Suspense for review", sheet: "Petty cash + Pre-paid" },
+  { value: "cash_control_zip", label: "Cash Control (ZIP) — Petty Cash / Emola / Mpesa", desc: "Personal notebook: upload Money_Box.zip containing Money Box (Petty Cash), Emola, and/or Mpesa workbooks. Isolated from accounting.", sheet: "Money Box + Emola + Mpesa" },
 ];
 
 const MONTHS = [
@@ -160,6 +163,18 @@ export default function UploadData() {
             .join("\n");
           break;
         }
+        case "cash_control_zip": {
+          const result = await parseCashControlZip(buffer, y);
+          count = result.petty_cash.reduce((s, x) => s + x.transactions.length, 0)
+                + result.emola.reduce((s, x) => s + x.transactions.length, 0)
+                + result.mpesa.reduce((s, x) => s + x.transactions.length, 0);
+          const pcSheets = result.petty_cash.map((s) => `  ${s.sheet_name} — ${s.transactions.length} tx, opening ${s.opening_balance.toLocaleString()}`).join("\n");
+          const emSheets = result.emola.map((s) => `  ${s.sheet_name} — ${s.transactions.length} tx, opening ${s.opening_balance.toLocaleString()}`).join("\n");
+          const mpSheets = result.mpesa.map((s) => `  ${s.sheet_name} — ${s.transactions.length} tx, opening ${s.opening_balance.toLocaleString()}`).join("\n");
+          preview = `Petty Cash: ${result.petty_cash.length} sheet(s)\n${pcSheets}\n\nEmola: ${result.emola.length} sheet(s)\n${emSheets}\n\nMpesa: ${result.mpesa.length} sheet(s)\n${mpSheets}`;
+          if (result.warnings.length) preview += `\n\n⚠ ${result.warnings.join("; ")}`;
+          break;
+        }
       }
 
       setState({ file, status: "parsed", preview, recordCount: count, error: "" });
@@ -215,6 +230,13 @@ export default function UploadData() {
         case "invoices":
           imported = await importInvoices(parseInvoices(buffer, m, y), state.file.name);
           break;
+        case "cash_control_zip": {
+          const res = await parseCashControlZip(buffer, y);
+          const imp = await importCashControl(res);
+          imported = imp.petty_cash + imp.emola + imp.mpesa;
+          toast({ title: "Cash Control imported", description: `Petty Cash: ${imp.petty_cash} · Emola: ${imp.emola} · Mpesa: ${imp.mpesa}` });
+          break;
+        }
       }
 
       setState((s) => ({ ...s, status: "success", recordCount: imported }));
@@ -311,7 +333,7 @@ export default function UploadData() {
                 <p className="text-xs text-muted-foreground mt-1">.xlsx files — e.g. "01 BDO Bank Control 2026.xlsx"</p>
                 <Input
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept={fileType === "cash_control_zip" ? ".zip" : ".xlsx,.xls"}
                   className="hidden"
                   onChange={handleFileSelect}
                 />
