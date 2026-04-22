@@ -163,6 +163,18 @@ export default function UploadData() {
             .join("\n");
           break;
         }
+        case "cash_control_zip": {
+          const result = await parseCashControlZip(buffer, y);
+          count = result.petty_cash.reduce((s, x) => s + x.transactions.length, 0)
+                + result.emola.reduce((s, x) => s + x.transactions.length, 0)
+                + result.mpesa.reduce((s, x) => s + x.transactions.length, 0);
+          const pcSheets = result.petty_cash.map((s) => `  ${s.sheet_name} — ${s.transactions.length} tx, opening ${s.opening_balance.toLocaleString()}`).join("\n");
+          const emSheets = result.emola.map((s) => `  ${s.sheet_name} — ${s.transactions.length} tx, opening ${s.opening_balance.toLocaleString()}`).join("\n");
+          const mpSheets = result.mpesa.map((s) => `  ${s.sheet_name} — ${s.transactions.length} tx, opening ${s.opening_balance.toLocaleString()}`).join("\n");
+          preview = `Petty Cash: ${result.petty_cash.length} sheet(s)\n${pcSheets}\n\nEmola: ${result.emola.length} sheet(s)\n${emSheets}\n\nMpesa: ${result.mpesa.length} sheet(s)\n${mpSheets}`;
+          if (result.warnings.length) preview += `\n\n⚠ ${result.warnings.join("; ")}`;
+          break;
+        }
       }
 
       setState({ file, status: "parsed", preview, recordCount: count, error: "" });
