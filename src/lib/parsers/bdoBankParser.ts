@@ -54,7 +54,7 @@ function parseSheetTransactions(
   currency: string,
   month: number,
   year: number
-): ParsedBankTransaction[] {
+): { transactions: ParsedBankTransaction[]; opening: ParsedOpeningBalance | null } {
   const ws = wb.Sheets[sheetName];
   if (!ws) return [];
 
