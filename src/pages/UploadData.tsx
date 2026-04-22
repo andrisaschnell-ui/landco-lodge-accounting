@@ -149,6 +149,17 @@ export default function UploadData() {
           }
           break;
         }
+        case "invoices": {
+          const result = parseInvoices(buffer, m, y);
+          count = result.invoices.length;
+          const grand = result.invoices.reduce((s, i) => s + i.total_mzn, 0);
+          preview = `Total invoices: ${count} | Grand total: ${grand.toLocaleString()} MZN\n\n`;
+          preview += result.invoices
+            .slice(0, 8)
+            .map((i) => `  ${i.date} INV#${i.invoice_no} ${i.description} — ${i.total_mzn.toLocaleString()} MZN`)
+            .join("\n");
+          break;
+        }
       }
 
       setState({ file, status: "parsed", preview, recordCount: count, error: "" });
@@ -200,6 +211,9 @@ export default function UploadData() {
           break;
         case "expenses":
           imported = await importExpenses(parseExpenses(buffer, m, y), state.file.name);
+          break;
+        case "invoices":
+          imported = await importInvoices(parseInvoices(buffer, m, y), state.file.name);
           break;
       }
 
