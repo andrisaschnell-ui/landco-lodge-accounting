@@ -268,6 +268,179 @@ export type Database = {
           },
         ]
       }
+      cash_allocation_columns: {
+        Row: {
+          column_name: string
+          created_at: string
+          id: string
+          sheet_type: string
+          sort_order: number
+        }
+        Insert: {
+          column_name: string
+          created_at?: string
+          id?: string
+          sheet_type: string
+          sort_order?: number
+        }
+        Update: {
+          column_name?: string
+          created_at?: string
+          id?: string
+          sheet_type?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      cash_dropdown_options: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          sheet_type: string
+          sort_order: number
+          value: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          sheet_type: string
+          sort_order?: number
+          value: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          sheet_type?: string
+          sort_order?: number
+          value?: string
+        }
+        Relationships: []
+      }
+      cash_sheets: {
+        Row: {
+          created_at: string
+          id: string
+          month: number | null
+          opening_balance: number
+          opening_description: string | null
+          sheet_type: string
+          source_file: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month?: number | null
+          opening_balance?: number
+          opening_description?: string | null
+          sheet_type: string
+          source_file?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number | null
+          opening_balance?: number
+          opening_description?: string | null
+          sheet_type?: string
+          source_file?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      cash_transactions: {
+        Row: {
+          allocation_amount: number | null
+          allocation_column: string | null
+          allocations: Json
+          balance: number | null
+          bank_charges: number | null
+          cell_no: string | null
+          cheque_no: string | null
+          company: string | null
+          created_at: string
+          description: string | null
+          entrada: number | null
+          funder: string | null
+          id: string
+          month: number
+          receiver: string | null
+          row_no: number | null
+          saida: number | null
+          sheet_id: string | null
+          sheet_type: string
+          source_file: string | null
+          tx_date: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          allocation_amount?: number | null
+          allocation_column?: string | null
+          allocations?: Json
+          balance?: number | null
+          bank_charges?: number | null
+          cell_no?: string | null
+          cheque_no?: string | null
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          entrada?: number | null
+          funder?: string | null
+          id?: string
+          month: number
+          receiver?: string | null
+          row_no?: number | null
+          saida?: number | null
+          sheet_id?: string | null
+          sheet_type: string
+          source_file?: string | null
+          tx_date?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          allocation_amount?: number | null
+          allocation_column?: string | null
+          allocations?: Json
+          balance?: number | null
+          bank_charges?: number | null
+          cell_no?: string | null
+          cheque_no?: string | null
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          entrada?: number | null
+          funder?: string | null
+          id?: string
+          month?: number
+          receiver?: string | null
+          row_no?: number | null
+          saida?: number | null
+          sheet_id?: string | null
+          sheet_type?: string
+          source_file?: string | null
+          tx_date?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_transactions_sheet_id_fkey"
+            columns: ["sheet_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           base_salary: number
