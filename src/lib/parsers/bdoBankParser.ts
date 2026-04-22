@@ -106,12 +106,12 @@ function parseSheetTransactions(
     const balance = num(row[8]);
     const iva = num(row[9]);
 
-    // Skip empty rows and balance-forward-only rows with no movement
+    // Skip empty rows
     if (entradas === 0 && saidas === 0 && !desc) continue;
-    // Skip if description is just "BALANCE" type
+    // Skip BALANCE CARRY FORWARD rows — these are opening balances from previous month, not transactions
     const descUp = desc.toUpperCase();
-    if (descUp === 'BALANCE FORWARD' || descUp === 'BALANCE CARRY FORWARD') {
-      // Still include as it establishes opening balance
+    if (descUp.includes('BALANCE CARRY FORWARD') || descUp.includes('BALANCE FORWARD') || descUp.includes('SALDO TRANSPORTE')) {
+      continue;
     }
 
     const dateVal = rowD?.[1] ?? row[1];
