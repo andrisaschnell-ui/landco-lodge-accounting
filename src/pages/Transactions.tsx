@@ -67,45 +67,75 @@ export default function Transactions() {
         </TabsList>
 
         <TabsContent value="income">
-          <Card>
-            <CardHeader><CardTitle>Income Transactions</CardTitle></CardHeader>
-            <CardContent>
-              {income && income.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Property</TableHead>
-                      <TableHead>Guest</TableHead>
-                      <TableHead className="text-right">Amount MZN</TableHead>
-                      <TableHead className="text-right">Amount USD</TableHead>
-                      <TableHead>Invoice</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {income.map((t: any) => (
-                      <TableRow key={t.id}>
-                        <TableCell>{t.date}</TableCell>
-                        <TableCell>{t.properties?.name ?? "—"}</TableCell>
-                        <TableCell>{t.guest_name ?? t.description ?? "—"}</TableCell>
-                        <TableCell className="text-right">{formatMZN(t.accommodation_amount_mzn)}</TableCell>
-                        <TableCell className="text-right">${formatMZN(t.amount_usd ?? 0)}</TableCell>
-                        <TableCell>
-                          {t.invoices?.[0] ? (
-                            <span className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                              {t.invoices[0].invoice_number}
-                            </span>
-                          ) : "—"}
-                        </TableCell>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader><CardTitle>Sales Invoices ({invoiceIncome?.length ?? 0})</CardTitle></CardHeader>
+              <CardContent>
+                {invoiceIncome && invoiceIncome.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Number</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Client / Description</TableHead>
+                        <TableHead className="text-right">Subtotal MZN</TableHead>
+                        <TableHead className="text-right">IVA MZN</TableHead>
+                        <TableHead className="text-right">Total MZN</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-muted-foreground py-8 text-center">No income transactions yet.</p>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {invoiceIncome.map((i: any) => (
+                        <TableRow key={i.id}>
+                          <TableCell className="font-mono text-xs">{i.invoice_number}</TableCell>
+                          <TableCell>{i.invoice_date}</TableCell>
+                          <TableCell className="max-w-[300px] truncate">{i.client_name}</TableCell>
+                          <TableCell className="text-right">{formatMZN(i.subtotal_mzn)}</TableCell>
+                          <TableCell className="text-right">{formatMZN(i.vat_amount_mzn)}</TableCell>
+                          <TableCell className="text-right font-bold">{formatMZN(i.total_mzn)}</TableCell>
+                          <TableCell><span className="text-xs uppercase text-muted-foreground">{i.status}</span></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-muted-foreground py-8 text-center">No invoices yet — upload via the Invoices sheet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Income Transactions (legacy)</CardTitle></CardHeader>
+              <CardContent>
+                {income && income.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Property</TableHead>
+                        <TableHead>Guest</TableHead>
+                        <TableHead className="text-right">Amount MZN</TableHead>
+                        <TableHead className="text-right">Amount USD</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {income.map((t: any) => (
+                        <TableRow key={t.id}>
+                          <TableCell>{t.date}</TableCell>
+                          <TableCell>{t.properties?.name ?? "—"}</TableCell>
+                          <TableCell>{t.guest_name ?? t.description ?? "—"}</TableCell>
+                          <TableCell className="text-right">{formatMZN(t.accommodation_amount_mzn)}</TableCell>
+                          <TableCell className="text-right">${formatMZN(t.amount_usd ?? 0)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-muted-foreground py-8 text-center">No income transactions yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="expenses">
