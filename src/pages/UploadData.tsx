@@ -14,6 +14,7 @@ import { parseBdoBank } from "@/lib/parsers/bdoBankParser";
 import { parsePettyCash } from "@/lib/parsers/pettyCashParser";
 import { parseExpenses } from "@/lib/parsers/expensesParser";
 import { parseInvoices } from "@/lib/parsers/invoicesParser";
+import { parseCashControlZip } from "@/lib/parsers/cashControlParser";
 import {
   importSalary,
   importBimTransfers,
@@ -23,6 +24,7 @@ import {
   importExpenses,
   importInvoices,
 } from "@/lib/importService";
+import { importCashControl } from "@/lib/cashControlImport";
 
 type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
