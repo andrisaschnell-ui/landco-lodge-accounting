@@ -26,7 +26,7 @@ import {
 } from "@/lib/importService";
 import { importCashControl } from "@/lib/cashControlImport";
 
-type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices";
+type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
 
 interface UploadState {
@@ -45,6 +45,7 @@ const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string 
   { value: "bim_transfer", label: "BIM Salary Transfers", desc: "Salary transfer list (name, NIB, net salary) from salary sheet", sheet: "Folha de salarios" },
   { value: "bdo_bank", label: "BIM Bank Control", desc: "Bank transactions from BIM Bank Control MZN + USD sheets", sheet: "BIM Bank Control Mtn + USD" },
   { value: "petty_cash", label: "Petty Cash + Pre-paid", desc: "Cash transactions from Petty cash and Pre-paid sheets — booked to Suspense for review", sheet: "Petty cash + Pre-paid" },
+  { value: "cash_control_zip", label: "Cash Control (ZIP) — Petty Cash / Emola / Mpesa", desc: "Personal notebook: upload Money_Box.zip containing Money Box (Petty Cash), Emola, and/or Mpesa workbooks. Isolated from accounting.", sheet: "Money Box + Emola + Mpesa" },
 ];
 
 const MONTHS = [
