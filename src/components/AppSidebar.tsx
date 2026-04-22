@@ -2,6 +2,7 @@ import {
   LayoutDashboard, ArrowLeftRight, Users, Building2, Briefcase,
   FileSpreadsheet, Upload, LogOut, BarChart3,
   BookOpen, ReceiptText, FileText, Settings2, BarChart, AlertTriangle,
+  Wallet, Eye, ClipboardList,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -32,6 +33,12 @@ const accountingItems = [
   { title: "Suspense Review", url: "/accounting/suspense", icon: AlertTriangle },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
   { title: "Shareholder Statements", url: "/accounting/shareholders", icon: Users },
+];
+
+const cashControlItems = [
+  { title: "Cash Control Uploaded", url: "/cash-control", icon: Wallet },
+  { title: "Cash Control Display", url: "/cash-control/display", icon: Eye },
+  { title: "Control Report", url: "/cash-control/reports", icon: ClipboardList },
 ];
 
 export function AppSidebar() {
@@ -79,6 +86,33 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-muted text-primary font-medium"
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Spacer + Cash Control (isolated notebook module) */}
+        <div className="h-4" aria-hidden />
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            {!collapsed && <span className="font-bold">Cash Control</span>}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {cashControlItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/cash-control"}
                       className="hover:bg-muted/50"
                       activeClassName="bg-muted text-primary font-medium"
                     >
