@@ -23,6 +23,9 @@ import AccountMapping from "./pages/AccountMapping";
 import FinancialReports from "./pages/FinancialReports";
 import ShareholderReports from "./pages/ShareholderReports";
 import SuspenseReview from "./pages/SuspenseReview";
+import CashControl from "./pages/CashControl";
+import CashControlDisplay from "./pages/CashControlDisplay";
+import CashControlReports from "./pages/CashControlReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +90,10 @@ const App = () => (
                 <Route path="/accounting/suspense" element={<SuspenseReview />} />
                 <Route path="/accounting/reports" element={<FinancialReports />} />
                 <Route path="/accounting/shareholders" element={<ShareholderReports />} />
+                <Route path="/cash-control" element={<CashControl />} />
+                <Route path="/cash-control/display" element={<CashControlDisplay />} />
+                <Route path="/cash-control/display/:type" element={<CashControlDisplay />} />
+                <Route path="/cash-control/reports" element={<CashControlReports />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
