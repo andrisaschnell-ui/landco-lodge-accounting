@@ -13,6 +13,7 @@ import { parseMonthEnd } from "@/lib/parsers/monthEndParser";
 import { parseBdoBank } from "@/lib/parsers/bdoBankParser";
 import { parsePettyCash } from "@/lib/parsers/pettyCashParser";
 import { parseExpenses } from "@/lib/parsers/expensesParser";
+import { parseInvoices } from "@/lib/parsers/invoicesParser";
 import {
   importSalary,
   importBimTransfers,
@@ -20,9 +21,10 @@ import {
   importBdoBank,
   importPettyCash,
   importExpenses,
+  importInvoices,
 } from "@/lib/importService";
 
-type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses";
+type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
 
 interface UploadState {
@@ -34,12 +36,13 @@ interface UploadState {
 }
 
 const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string }[] = [
+  { value: "invoices", label: "Sales Invoices", desc: "Invoices issued (sales) from the Invoices sheet", sheet: "Invoices" },
   { value: "expenses", label: "Expenses (Monthly)", desc: "Per-line expenses from MONTH END workbook — header on row 6 of the EXPENSES sheet", sheet: "EXPENSES (MONTH END workbook)" },
   { value: "month_end", label: "Month End (Invoices & Creditors)", desc: "Income from Invoices sheet, expenses from Creditors sheet", sheet: "Invoices + Creditors" },
   { value: "salary", label: "Salary Sheet (Folha de Salarios)", desc: "Employee salary data from Folha de salarios sheet", sheet: "Folha de salarios" },
   { value: "bim_transfer", label: "BIM Salary Transfers", desc: "Salary transfer list (name, NIB, net salary) from salary sheet", sheet: "Folha de salarios" },
   { value: "bdo_bank", label: "BIM Bank Control", desc: "Bank transactions from BIM Bank Control MZN + USD sheets", sheet: "BIM Bank Control Mtn + USD" },
-  { value: "petty_cash", label: "Petty Cash + Pre-paid", desc: "Cash transactions from Petty cash and Pre-paid sheets", sheet: "Petty cash + Pre-paid" },
+  { value: "petty_cash", label: "Petty Cash + Pre-paid", desc: "Cash transactions from Petty cash and Pre-paid sheets — booked to Suspense for review", sheet: "Petty cash + Pre-paid" },
 ];
 
 const MONTHS = [
