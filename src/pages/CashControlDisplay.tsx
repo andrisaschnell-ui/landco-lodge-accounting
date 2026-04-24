@@ -294,25 +294,31 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   };
   const [zoom, setZoom] = useState<number>(100);
 
-  // Measure the sticky toolbar height so the table <thead> can pin right below it.
+  // Measure the sticky toolbar so the table <thead> can pin right below it.
+  // Because the toolbar lives INSIDE the zoomed container, its measured height
+  // is already in the zoomed coordinate space — no division needed.
   const stickyRef = useRef<HTMLDivElement | null>(null);
   const [stickyHeight, setStickyHeight] = useState(0);
   useLayoutEffect(() => {
     if (!stickyRef.current) return;
     const el = stickyRef.current;
-    const update = () => setStickyHeight(el.getBoundingClientRect().height);
+    const update = () => {
+      // offsetHeight is in the element's own (unzoomed) layout pixels,
+      // which is exactly what `top:` inside the same zoomed context expects.
+      setStickyHeight(el.offsetHeight);
+    };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     window.addEventListener("resize", update);
     return () => { ro.disconnect(); window.removeEventListener("resize", update); };
-  }, [selected, isJanuary, allocCols.length]);
-
-  // The CSS `zoom` property scales sticky offsets too. Compensate by dividing.
-  const theadOffsetPx = Math.round(stickyHeight / (zoom / 100));
+  }, [selected, isJanuary, allocCols.length, zoom]);
 
   return (
     <div className="relative">
+      {/* Single zoomed container — toolbar + table share the same scroll/zoom context.
+          This is the only way `position: sticky` works correctly under CSS `zoom`. */}
+      <div style={{ zoom: `${zoom}%` }}>
       {/* Sticky top region: toolbar + opening-balance card + allocation-controls row */}
       <div ref={stickyRef} className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
         <div className="flex items-center justify-between flex-wrap gap-3 py-2">
@@ -411,10 +417,10 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
         </div>
       </div>
 
-      {/* Zoomable content area — no inner scroll container so page scroll drives sticky thead */}
+      {/* Table area — same zoom context as the sticky toolbar above */}
       <div
         className="mt-3"
-        style={{ zoom: `${zoom}%`, ["--cash-sticky-offset" as string]: `${theadOffsetPx}px` }}
+        style={{ ["--cash-sticky-offset" as string]: `${stickyHeight}px` }}
       >
         <div className="rounded-md border bg-card">
           <Table>
@@ -508,6 +514,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
             </Table>
         </div>
       </div>
+      </div>{/* /zoomed container */}
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
       <FloatingSaveButton dirtyCount={Object.keys(dirty).length} onSave={saveAll} />
