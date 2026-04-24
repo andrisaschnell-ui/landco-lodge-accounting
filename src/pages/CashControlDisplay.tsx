@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Download, ArrowLeft, Save, Plus, CalendarPlus } from "lucide-react";
 import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
 import { ZoomControl } from "@/components/cash/ZoomControl";
+import { FloatingSaveButton } from "@/components/cash/FloatingSaveButton";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
 
@@ -293,10 +294,27 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   };
   const [zoom, setZoom] = useState<number>(100);
 
+  // Measure the sticky toolbar height so the table <thead> can pin right below it.
+  const stickyRef = useRef<HTMLDivElement | null>(null);
+  const [stickyHeight, setStickyHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!stickyRef.current) return;
+    const el = stickyRef.current;
+    const update = () => setStickyHeight(el.getBoundingClientRect().height);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => { ro.disconnect(); window.removeEventListener("resize", update); };
+  }, [selected, isJanuary, allocCols.length]);
+
+  // The CSS `zoom` property scales sticky offsets too. Compensate by dividing.
+  const theadOffsetPx = Math.round(stickyHeight / (zoom / 100));
+
   return (
     <div className="relative">
-      {/* Sticky top region: toolbar + opening-balance card + table-controls row */}
-      <div className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+      {/* Sticky top region: toolbar + opening-balance card + allocation-controls row */}
+      <div ref={stickyRef} className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
         <div className="flex items-center justify-between flex-wrap gap-3 py-2">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild><Link to="/cash-control"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link></Button>
@@ -396,7 +414,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       {/* Zoomable content area — no inner scroll container so page scroll drives sticky thead */}
       <div
         className="mt-3"
-        style={{ zoom: `${zoom}%` }}
+        style={{ zoom: `${zoom}%`, ["--cash-sticky-offset" as string]: `${theadOffsetPx}px` }}
       >
         <div className="rounded-md border bg-card">
           <Table>
@@ -492,6 +510,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       </div>
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
+      <FloatingSaveButton dirtyCount={Object.keys(dirty).length} onSave={saveAll} />
     </div>
   );
 }
