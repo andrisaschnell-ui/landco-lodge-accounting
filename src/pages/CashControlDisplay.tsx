@@ -291,197 +291,209 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       transactions: txs,
     });
   };
+  const [zoom, setZoom] = useState<number>(100);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild><Link to="/cash-control"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link></Button>
-          <h1 className="text-2xl font-bold">{TITLES[sheetType]}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select
-            value={sheetId}
-            onValueChange={(v) => { if (v === "__add__") { setAddOpen(true); } else { setSheetId(v); } }}
-          >
-            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Select period" /></SelectTrigger>
-            <SelectContent>
-              {periods.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.month ? `${String(p.month).padStart(2, "0")}/` : ""}{p.year}
-                </SelectItem>
-              ))}
-              <SelectItem value="__add__">➕ Add period…</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm"><CalendarPlus className="h-4 w-4 mr-1" />New period</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Add new period</DialogTitle></DialogHeader>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Year</Label>
-                  <Input type="number" value={newYear} onChange={(e) => setNewYear(Number(e.target.value))} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Month</Label>
-                  <Select value={String(newMonth)} onValueChange={(v) => setNewMonth(Number(v))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {MONTHS.map((m) => <SelectItem key={m.v} value={String(m.v)}>{String(m.v).padStart(2, "0")} — {m.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {newMonth === 1 && (
-                <div className="space-y-1">
-                  <Label>Opening balance (January)</Label>
-                  <Input type="number" step="0.01" value={newOpening} onChange={(e) => setNewOpening(e.target.value)} />
-                </div>
-              )}
-              {newMonth > 1 && (
-                <p className="text-xs text-muted-foreground">Opening balance will roll from the previous month's closing automatically (if it exists).</p>
-              )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-                <Button onClick={addPeriod}>Create</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Button variant="outline" size="sm" onClick={addTransaction} disabled={!selected}><Plus className="h-4 w-4 mr-1" />Add row</Button>
-          <Button variant="outline" onClick={saveAll} disabled={Object.keys(dirty).length === 0}><Save className="h-4 w-4 mr-1" />Save{Object.keys(dirty).length > 0 ? ` (${Object.keys(dirty).length})` : ""}</Button>
-          <Button onClick={doExport}><Download className="h-4 w-4 mr-1" />Excel</Button>
-        </div>
-      </div>
-
-      {selected && (
-        <Card>
-          <CardHeader className="pb-3">
-            {isJanuary ? (
-              <div className="flex items-center gap-3 flex-wrap">
-                <CardTitle className="text-base">Opening Balance (January, editable):</CardTitle>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={janOpeningInput}
-                  onChange={(e) => setJanOpeningInput(e.target.value)}
-                  className="h-8 w-40 font-mono"
-                />
-                <Button size="sm" variant="outline" onClick={saveJanOpening}>Save opening</Button>
-              </div>
-            ) : (
-              <CardTitle className="text-base">
-                Opening Balance: <span className="font-mono">{fmt(effectiveOpening)}</span>
-                <span className="ml-2 text-xs text-muted-foreground">(rolled from previous month's closing)</span>
-              </CardTitle>
-            )}
-          </CardHeader>
-        </Card>
-      )}
-
-      <div className="flex items-end gap-2 flex-wrap">
-        <div className="text-xs text-muted-foreground">Allocation columns — click any header to edit options. Add new column:</div>
-        <Input value={newAllocCol} onChange={(e) => setNewAllocCol(e.target.value)} placeholder="New column…" className="h-8 w-40" />
-        <Button variant="outline" size="sm" onClick={addAllocCol}>Add column</Button>
-      </div>
-
-      <Card>
-        <CardContent className="p-0 overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {isPettyLike(sheetType) ? (
-                  <>
-                    <TableHead className="w-12">Nº</TableHead>
-                    <TableHead className="w-28">Data</TableHead>
-                    <TableHead><DropdownListEditor headerMode sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" /></TableHead>
-                    <TableHead><DropdownListEditor headerMode sheetType={sheetType} columnKey="company" label="Empresa" /></TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="text-right">Entradas</TableHead>
-                    <TableHead className="text-right">Saídas</TableHead>
-                  </>
-                ) : (
-                  <>
-                    <TableHead className="w-28">Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead><DropdownListEditor headerMode sheetType={sheetType} columnKey="funder" label="Funder" /></TableHead>
-                    <TableHead>Cell No</TableHead>
-                    <TableHead><DropdownListEditor headerMode sheetType={sheetType} columnKey="receiver" label="Receiver" /></TableHead>
-                    <TableHead className="text-right">Deposit</TableHead>
-                    <TableHead className="text-right">Payment</TableHead>
-                    {isMpesaLike(sheetType) && <TableHead className="text-right">Bank charges</TableHead>}
-                  </>
-                )}
-                {allocCols.map((c) => (
-                  <TableHead key={c} className="text-right">
-                    <DropdownListEditor headerMode sheetType={sheetType} columnKey={`alloc:${c}`} label={c} />
-                  </TableHead>
+    <div className="relative">
+      {/* Sticky top region: toolbar + opening-balance card + table-controls row */}
+      <div className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+        <div className="flex items-center justify-between flex-wrap gap-3 py-2">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild><Link to="/cash-control"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link></Button>
+            <h1 className="text-2xl font-bold">{TITLES[sheetType]}</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select
+              value={sheetId}
+              onValueChange={(v) => { if (v === "__add__") { setAddOpen(true); } else { setSheetId(v); } }}
+            >
+              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Select period" /></SelectTrigger>
+              <SelectContent>
+                {periods.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.month ? `${String(p.month).padStart(2, "0")}/` : ""}{p.year}
+                  </SelectItem>
                 ))}
-                <TableHead className="text-right font-semibold">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {withBalance.map((t) => (
-                <TableRow key={t.id}>
+                <SelectItem value="__add__">➕ Add period…</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm"><CalendarPlus className="h-4 w-4 mr-1" />New period</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Add new period</DialogTitle></DialogHeader>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Year</Label>
+                    <Input type="number" value={newYear} onChange={(e) => setNewYear(Number(e.target.value))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Month</Label>
+                    <Select value={String(newMonth)} onValueChange={(v) => setNewMonth(Number(v))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MONTHS.map((m) => <SelectItem key={m.v} value={String(m.v)}>{String(m.v).padStart(2, "0")} — {m.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {newMonth === 1 && (
+                  <div className="space-y-1">
+                    <Label>Opening balance (January)</Label>
+                    <Input type="number" step="0.01" value={newOpening} onChange={(e) => setNewOpening(e.target.value)} />
+                  </div>
+                )}
+                {newMonth > 1 && (
+                  <p className="text-xs text-muted-foreground">Opening balance will roll from the previous month's closing automatically (if it exists).</p>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+                  <Button onClick={addPeriod}>Create</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Button variant="outline" size="sm" onClick={addTransaction} disabled={!selected}><Plus className="h-4 w-4 mr-1" />Add row</Button>
+            <Button variant="outline" onClick={saveAll} disabled={Object.keys(dirty).length === 0}><Save className="h-4 w-4 mr-1" />Save{Object.keys(dirty).length > 0 ? ` (${Object.keys(dirty).length})` : ""}</Button>
+            <Button onClick={doExport}><Download className="h-4 w-4 mr-1" />Excel</Button>
+          </div>
+        </div>
+
+        {selected && (
+          <Card className="mb-2">
+            <CardHeader className="py-3">
+              {isJanuary ? (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <CardTitle className="text-base">Opening Balance (January, editable):</CardTitle>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={janOpeningInput}
+                    onChange={(e) => setJanOpeningInput(e.target.value)}
+                    className="h-8 w-40 font-mono"
+                  />
+                  <Button size="sm" variant="outline" onClick={saveJanOpening}>Save opening</Button>
+                </div>
+              ) : (
+                <CardTitle className="text-base">
+                  Opening Balance: <span className="font-mono">{fmt(effectiveOpening)}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">(rolled from previous month's closing)</span>
+                </CardTitle>
+              )}
+            </CardHeader>
+          </Card>
+        )}
+
+        <div className="flex items-end gap-2 flex-wrap pb-1">
+          <div className="text-xs text-muted-foreground">Allocation columns — click any header to edit options. Add new column:</div>
+          <Input value={newAllocCol} onChange={(e) => setNewAllocCol(e.target.value)} placeholder="New column…" className="h-8 w-40" />
+          <Button variant="outline" size="sm" onClick={addAllocCol}>Add column</Button>
+        </div>
+      </div>
+
+      {/* Zoomable content area */}
+      <div
+        className="mt-3"
+        style={{ zoom: `${zoom}%` }}
+      >
+        <Card>
+          <CardContent className="p-0 overflow-auto">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+                <TableRow>
                   {isPettyLike(sheetType) ? (
                     <>
-                      <TableCell>{t.row_no}</TableCell>
-                      <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
-                      <TableCell>
-                        <DropdownListEditor sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" value={t.cheque_no} onPick={(v) => updateLocal(t.id, { cheque_no: v })} />
-                      </TableCell>
-                      <TableCell>
-                        <DropdownListEditor sheetType={sheetType} columnKey="company" label="Empresa" value={t.company} onPick={(v) => updateLocal(t.id, { company: v })} />
-                      </TableCell>
-                      <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
-                      <TableCell className="text-right">
-                        <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                      </TableCell>
+                      <TableHead className="w-12 bg-background">Nº</TableHead>
+                      <TableHead className="w-28 bg-background">Data</TableHead>
+                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" /></TableHead>
+                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="company" label="Empresa" /></TableHead>
+                      <TableHead className="bg-background">Descrição</TableHead>
+                      <TableHead className="text-right bg-background">Entradas</TableHead>
+                      <TableHead className="text-right bg-background">Saídas</TableHead>
                     </>
                   ) : (
                     <>
-                      <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
-                      <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
-                      <TableCell>
-                        <DropdownListEditor sheetType={sheetType} columnKey="funder" label="Funder" value={t.funder} onPick={(v) => updateLocal(t.id, { funder: v })} />
-                      </TableCell>
-                      <TableCell><Input value={t.cell_no ?? ""} onChange={(e) => updateLocal(t.id, { cell_no: e.target.value })} className="h-7 text-xs w-28" /></TableCell>
-                      <TableCell>
-                        <DropdownListEditor sheetType={sheetType} columnKey="receiver" label="Receiver" value={t.receiver} onPick={(v) => updateLocal(t.id, { receiver: v })} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                      </TableCell>
-                      {isMpesaLike(sheetType) && (
-                        <TableCell className="text-right">
-                          <Input type="number" step="0.01" value={t.bank_charges ?? ""} onChange={(e) => updateLocal(t.id, { bank_charges: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                        </TableCell>
-                      )}
+                      <TableHead className="w-28 bg-background">Date</TableHead>
+                      <TableHead className="bg-background">Description</TableHead>
+                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="funder" label="Funder" /></TableHead>
+                      <TableHead className="bg-background">Cell No</TableHead>
+                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="receiver" label="Receiver" /></TableHead>
+                      <TableHead className="text-right bg-background">Deposit</TableHead>
+                      <TableHead className="text-right bg-background">Payment</TableHead>
+                      {isMpesaLike(sheetType) && <TableHead className="text-right bg-background">Bank charges</TableHead>}
                     </>
                   )}
                   {allocCols.map((c) => (
-                    <TableCell key={c} className="text-right font-mono text-xs">{fmt(t.allocations?.[c])}</TableCell>
+                    <TableHead key={c} className="text-right bg-background">
+                      <DropdownListEditor headerMode sheetType={sheetType} columnKey={`alloc:${c}`} label={c} />
+                    </TableHead>
                   ))}
-                  <TableCell className="text-right font-mono font-semibold">{fmt((t as Tx & { _balance: number })._balance)}</TableCell>
+                  <TableHead className="text-right font-semibold bg-background">Balance</TableHead>
                 </TableRow>
-              ))}
-              {withBalance.length === 0 && (
-                <TableRow><TableCell colSpan={20} className="text-center text-muted-foreground py-8">No transactions — use “Add row” or upload via the Upload page</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {withBalance.map((t) => (
+                  <TableRow key={t.id}>
+                    {isPettyLike(sheetType) ? (
+                      <>
+                        <TableCell>{t.row_no}</TableCell>
+                        <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
+                        <TableCell>
+                          <DropdownListEditor sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" value={t.cheque_no} onPick={(v) => updateLocal(t.id, { cheque_no: v })} />
+                        </TableCell>
+                        <TableCell>
+                          <DropdownListEditor sheetType={sheetType} columnKey="company" label="Empresa" value={t.company} onPick={(v) => updateLocal(t.id, { company: v })} />
+                        </TableCell>
+                        <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
+                        <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
+                        <TableCell>
+                          <DropdownListEditor sheetType={sheetType} columnKey="funder" label="Funder" value={t.funder} onPick={(v) => updateLocal(t.id, { funder: v })} />
+                        </TableCell>
+                        <TableCell><Input value={t.cell_no ?? ""} onChange={(e) => updateLocal(t.id, { cell_no: e.target.value })} className="h-7 text-xs w-28" /></TableCell>
+                        <TableCell>
+                          <DropdownListEditor sheetType={sheetType} columnKey="receiver" label="Receiver" value={t.receiver} onPick={(v) => updateLocal(t.id, { receiver: v })} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                        </TableCell>
+                        {isMpesaLike(sheetType) && (
+                          <TableCell className="text-right">
+                            <Input type="number" step="0.01" value={t.bank_charges ?? ""} onChange={(e) => updateLocal(t.id, { bank_charges: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                          </TableCell>
+                        )}
+                      </>
+                    )}
+                    {allocCols.map((c) => (
+                      <TableCell key={c} className="text-right font-mono text-xs">{fmt(t.allocations?.[c])}</TableCell>
+                    ))}
+                    <TableCell className="text-right font-mono font-semibold">{fmt((t as Tx & { _balance: number })._balance)}</TableCell>
+                  </TableRow>
+                ))}
+                {withBalance.length === 0 && (
+                  <TableRow><TableCell colSpan={20} className="text-center text-muted-foreground py-8">No transactions — use "Add row" or upload via the Upload page</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+
+      <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
     </div>
   );
 }
