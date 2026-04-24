@@ -225,7 +225,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   const addTransaction = async () => {
     if (!selected) { toast({ title: "Pick a period first" }); return; }
     const nextRowNo = (txs.reduce((m, t) => Math.max(m, t.row_no ?? 0), 0)) + 1;
-    const insert = {
+    const { data, error } = await supabase.from("cash_transactions").insert({
       sheet_id: selected.id,
       sheet_type: sheetType,
       row_no: nextRowNo,
@@ -237,8 +237,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       saida: 0,
       bank_charges: 0,
       allocations: {},
-    } as Record<string, unknown>;
-    const { data, error } = await supabase.from("cash_transactions").insert(insert).select("*").single();
+    }).select("*").single();
     if (error) { toast({ title: "Add row failed", description: error.message, variant: "destructive" }); return; }
     setTxs((prev) => [...prev, data as Tx]);
     toast({ title: "Row added" });
