@@ -5,14 +5,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, ArrowLeft, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Download, ArrowLeft, Save, Plus, CalendarPlus } from "lucide-react";
 import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
 
-type CashType = "petty_cash" | "emola" | "mpesa";
-const TITLES: Record<CashType, string> = { petty_cash: "Petty Cash", emola: "Emola", mpesa: "Mpesa" };
+type CashType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two";
+
+const TITLES: Record<CashType, string> = {
+  petty_cash:  "Cash Display Ebony",
+  cash_landco: "Cash Display Landco",
+  emola:       "Emola One Display",
+  emola_two:   "Emola Two Display",
+  mpesa:       "Mpesa One Display",
+  mpesa_two:   "Mpesa Two Display",
+};
+
+const CARD_LABELS: Record<CashType, string> = {
+  petty_cash: "Cash Ebony", cash_landco: "Cash Landco",
+  emola: "Emola One", emola_two: "Emola Two",
+  mpesa: "Mpesa One", mpesa_two: "Mpesa Two",
+};
+
+const CASH_TYPES: CashType[] = ["petty_cash", "cash_landco", "emola", "emola_two", "mpesa", "mpesa_two"];
+const isPettyLike = (t: CashType) => t === "petty_cash" || t === "cash_landco";
+const isMpesaLike = (t: CashType) => t === "mpesa" || t === "mpesa_two";
 
 interface Tx {
   id: string; row_no: number | null; tx_date: string | null; description: string | null;
@@ -31,11 +51,11 @@ function PickerIndex() {
       <h1 className="text-3xl font-bold">Cash Control Display</h1>
       <p className="text-muted-foreground">Pick which sheet to view, edit, and download.</p>
       <div className="grid gap-4 md:grid-cols-3">
-        {(["petty_cash","emola","mpesa"] as CashType[]).map((t) => (
+        {CASH_TYPES.map((t) => (
           <Link key={t} to={`/cash-control/display/${t}`}>
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader><CardTitle>{TITLES[t]}</CardTitle></CardHeader>
-              <CardContent><p className="text-sm text-muted-foreground">Open {TITLES[t]} display</p></CardContent>
+              <CardHeader><CardTitle>{CARD_LABELS[t]}</CardTitle></CardHeader>
+              <CardContent><p className="text-sm text-muted-foreground">Open {CARD_LABELS[t]} display</p></CardContent>
             </Card>
           </Link>
         ))}
@@ -43,6 +63,12 @@ function PickerIndex() {
     </div>
   );
 }
+
+const MONTHS = [
+  { v: 1, label: "Jan" }, { v: 2, label: "Feb" }, { v: 3, label: "Mar" }, { v: 4, label: "Apr" },
+  { v: 5, label: "May" }, { v: 6, label: "Jun" }, { v: 7, label: "Jul" }, { v: 8, label: "Aug" },
+  { v: 9, label: "Sep" }, { v: 10, label: "Oct" }, { v: 11, label: "Nov" }, { v: 12, label: "Dec" },
+];
 
 function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   const [periods, setPeriods] = useState<{ id: string; month: number | null; year: number; opening_balance: number }[]>([]);
@@ -52,22 +78,47 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   const [txs, setTxs] = useState<Tx[]>([]);
   const [dirty, setDirty] = useState<Record<string, Partial<Tx>>>({});
 
+  // Cascade-derived opening (read-only for non-Jan months)
+  const [derivedOpening, setDerivedOpening] = useState<number | null>(null);
+  // Local-edit state for January opening
+  const [janOpeningInput, setJanOpeningInput] = useState<string>("");
+
+  // Add-period dialog state
+  const [addOpen, setAddOpen] = useState(false);
+  const [newYear, setNewYear] = useState<number>(new Date().getFullYear());
+  const [newMonth, setNewMonth] = useState<number>(1);
+  const [newOpening, setNewOpening] = useState<string>("0");
+
   const selected = periods.find((p) => p.id === sheetId);
+  const isJanuary = selected?.month === 1;
 
   // Load periods
+  const loadPeriods = async () => {
+    const { data } = await supabase
+      .from("cash_sheets")
+      .select("id, month, year, opening_balance")
+      .eq("sheet_type", sheetType)
+      .order("year", { ascending: false })
+      .order("month", { ascending: false });
+    setPeriods(data ?? []);
+    return data ?? [];
+  };
+
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("cash_sheets").select("id, month, year, opening_balance")
-        .eq("sheet_type", sheetType).order("year", { ascending: false }).order("month", { ascending: false });
-      setPeriods(data ?? []);
-      if (data && data.length && !sheetId) setSheetId(data[0].id);
+      const data = await loadPeriods();
+      if (data.length && !sheetId) setSheetId(data[0].id);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetType]);
 
   // Load allocation columns
   const loadAllocCols = async () => {
-    const { data } = await supabase.from("cash_allocation_columns").select("column_name")
-      .eq("sheet_type", sheetType).order("sort_order", { ascending: true });
+    const { data } = await supabase
+      .from("cash_allocation_columns")
+      .select("column_name")
+      .eq("sheet_type", sheetType)
+      .order("sort_order", { ascending: true });
     setAllocCols((data ?? []).map((d) => d.column_name));
   };
   useEffect(() => { loadAllocCols(); }, [sheetType]);
@@ -76,21 +127,64 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   useEffect(() => {
     if (!sheetId) { setTxs([]); return; }
     (async () => {
-      const { data } = await supabase.from("cash_transactions").select("*").eq("sheet_id", sheetId)
-        .order("tx_date", { ascending: true }).order("row_no", { ascending: true });
+      const { data } = await supabase
+        .from("cash_transactions")
+        .select("*")
+        .eq("sheet_id", sheetId)
+        .order("tx_date", { ascending: true })
+        .order("row_no", { ascending: true });
       setTxs((data ?? []) as Tx[]);
       setDirty({});
     })();
   }, [sheetId]);
 
-  // Client-side running balance (opening + entradas - saídas)
+  // Compute derived opening for the selected period: previous month's closing balance
+  useEffect(() => {
+    if (!selected) { setDerivedOpening(null); return; }
+    setJanOpeningInput(String(selected.opening_balance ?? 0));
+    if (selected.month === 1 || selected.month == null) {
+      setDerivedOpening(null);
+      return;
+    }
+    (async () => {
+      // Look up previous month's sheet (rolling over years)
+      const prevMonth = selected.month! - 1;
+      const prevYear  = selected.year;
+      const { data: prevSheet } = await supabase
+        .from("cash_sheets")
+        .select("id, opening_balance")
+        .eq("sheet_type", sheetType)
+        .eq("year", prevYear)
+        .eq("month", prevMonth)
+        .maybeSingle();
+      if (!prevSheet) { setDerivedOpening(null); return; }
+      const { data: prevTxs } = await supabase
+        .from("cash_transactions")
+        .select("entrada, saida, bank_charges")
+        .eq("sheet_id", prevSheet.id);
+      const closing = (prevSheet.opening_balance ?? 0) + (prevTxs ?? []).reduce(
+        (acc, r) => acc + (Number(r.entrada) || 0) - (Number(r.saida) || 0) - (Number(r.bank_charges) || 0),
+        0,
+      );
+      setDerivedOpening(closing);
+    })();
+  }, [selected, sheetType]);
+
+  // Effective opening to display + use for the running balance
+  const effectiveOpening = useMemo(() => {
+    if (!selected) return 0;
+    if (selected.month === 1 || selected.month == null) return Number(selected.opening_balance ?? 0);
+    return derivedOpening ?? Number(selected.opening_balance ?? 0);
+  }, [selected, derivedOpening]);
+
+  // Client-side running balance
   const withBalance = useMemo(() => {
-    let bal = selected?.opening_balance ?? 0;
+    let bal = effectiveOpening;
     return txs.map((t) => {
       bal = bal + (Number(t.entrada) || 0) - (Number(t.saida) || 0) - (Number(t.bank_charges) || 0);
       return { ...t, _balance: bal };
     });
-  }, [txs, selected]);
+  }, [txs, effectiveOpening]);
 
   const updateLocal = (id: string, patch: Partial<Tx>) => {
     setTxs((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -109,6 +203,16 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
     setDirty({});
   };
 
+  const saveJanOpening = async () => {
+    if (!selected || !isJanuary) return;
+    const val = Number(janOpeningInput);
+    if (Number.isNaN(val)) { toast({ title: "Invalid number", variant: "destructive" }); return; }
+    const { error } = await supabase.from("cash_sheets").update({ opening_balance: val }).eq("id", selected.id);
+    if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Opening saved" });
+    await loadPeriods();
+  };
+
   const addAllocCol = async () => {
     const v = newAllocCol.trim();
     if (!v) return;
@@ -118,6 +222,63 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
     loadAllocCols();
   };
 
+  const addTransaction = async () => {
+    if (!selected) { toast({ title: "Pick a period first" }); return; }
+    const nextRowNo = (txs.reduce((m, t) => Math.max(m, t.row_no ?? 0), 0)) + 1;
+    const insert = {
+      sheet_id: selected.id,
+      sheet_type: sheetType,
+      row_no: nextRowNo,
+      month: selected.month ?? 1,
+      year: selected.year,
+      tx_date: null,
+      description: "",
+      entrada: 0,
+      saida: 0,
+      bank_charges: 0,
+      allocations: {},
+    } as Record<string, unknown>;
+    const { data, error } = await supabase.from("cash_transactions").insert(insert).select("*").single();
+    if (error) { toast({ title: "Add row failed", description: error.message, variant: "destructive" }); return; }
+    setTxs((prev) => [...prev, data as Tx]);
+    toast({ title: "Row added" });
+  };
+
+  const addPeriod = async () => {
+    // Pre-compute opening if a previous month exists
+    let opening = Number(newOpening) || 0;
+    if (newMonth > 1) {
+      const { data: prev } = await supabase
+        .from("cash_sheets")
+        .select("id, opening_balance")
+        .eq("sheet_type", sheetType)
+        .eq("year", newYear)
+        .eq("month", newMonth - 1)
+        .maybeSingle();
+      if (prev) {
+        const { data: prevTxs } = await supabase
+          .from("cash_transactions")
+          .select("entrada, saida, bank_charges")
+          .eq("sheet_id", prev.id);
+        opening = (prev.opening_balance ?? 0) + (prevTxs ?? []).reduce(
+          (acc, r) => acc + (Number(r.entrada) || 0) - (Number(r.saida) || 0) - (Number(r.bank_charges) || 0),
+          0,
+        );
+      }
+    }
+    const { data, error } = await supabase
+      .from("cash_sheets")
+      .insert({ sheet_type: sheetType, year: newYear, month: newMonth, opening_balance: opening })
+      .select("id, month, year, opening_balance")
+      .single();
+    if (error) { toast({ title: "Create failed", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Period created" });
+    setAddOpen(false);
+    setNewOpening("0");
+    await loadPeriods();
+    setSheetId(data.id);
+  };
+
   const doExport = () => {
     if (!selected) return;
     exportCashSheetAsXlsx({
@@ -125,7 +286,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       title: TITLES[sheetType],
       month: selected.month,
       year: selected.year,
-      opening_balance: selected.opening_balance,
+      opening_balance: effectiveOpening,
       allocation_columns: allocCols,
       transactions: txs,
     });
@@ -136,19 +297,62 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild><Link to="/cash-control"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link></Button>
-          <h1 className="text-2xl font-bold">{TITLES[sheetType]} Display</h1>
+          <h1 className="text-2xl font-bold">{TITLES[sheetType]}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={sheetId} onValueChange={setSheetId}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select period" /></SelectTrigger>
+          <Select
+            value={sheetId}
+            onValueChange={(v) => { if (v === "__add__") { setAddOpen(true); } else { setSheetId(v); } }}
+          >
+            <SelectTrigger className="w-[220px]"><SelectValue placeholder="Select period" /></SelectTrigger>
             <SelectContent>
               {periods.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.month ? `${String(p.month).padStart(2, "0")}/` : ""}{p.year}
                 </SelectItem>
               ))}
+              <SelectItem value="__add__">➕ Add period…</SelectItem>
             </SelectContent>
           </Select>
+
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm"><CalendarPlus className="h-4 w-4 mr-1" />New period</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add new period</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Year</Label>
+                  <Input type="number" value={newYear} onChange={(e) => setNewYear(Number(e.target.value))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Month</Label>
+                  <Select value={String(newMonth)} onValueChange={(v) => setNewMonth(Number(v))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m) => <SelectItem key={m.v} value={String(m.v)}>{String(m.v).padStart(2, "0")} — {m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {newMonth === 1 && (
+                <div className="space-y-1">
+                  <Label>Opening balance (January)</Label>
+                  <Input type="number" step="0.01" value={newOpening} onChange={(e) => setNewOpening(e.target.value)} />
+                </div>
+              )}
+              {newMonth > 1 && (
+                <p className="text-xs text-muted-foreground">Opening balance will roll from the previous month's closing automatically (if it exists).</p>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+                <Button onClick={addPeriod}>Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Button variant="outline" size="sm" onClick={addTransaction} disabled={!selected}><Plus className="h-4 w-4 mr-1" />Add row</Button>
           <Button variant="outline" onClick={saveAll} disabled={Object.keys(dirty).length === 0}><Save className="h-4 w-4 mr-1" />Save{Object.keys(dirty).length > 0 ? ` (${Object.keys(dirty).length})` : ""}</Button>
           <Button onClick={doExport}><Download className="h-4 w-4 mr-1" />Excel</Button>
         </div>
@@ -157,7 +361,24 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       {selected && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Opening Balance: <span className="font-mono">{fmt(selected.opening_balance)}</span></CardTitle>
+            {isJanuary ? (
+              <div className="flex items-center gap-3 flex-wrap">
+                <CardTitle className="text-base">Opening Balance (January, editable):</CardTitle>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={janOpeningInput}
+                  onChange={(e) => setJanOpeningInput(e.target.value)}
+                  className="h-8 w-40 font-mono"
+                />
+                <Button size="sm" variant="outline" onClick={saveJanOpening}>Save opening</Button>
+              </div>
+            ) : (
+              <CardTitle className="text-base">
+                Opening Balance: <span className="font-mono">{fmt(effectiveOpening)}</span>
+                <span className="ml-2 text-xs text-muted-foreground">(rolled from previous month's closing)</span>
+              </CardTitle>
+            )}
           </CardHeader>
         </Card>
       )}
@@ -173,7 +394,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
           <Table>
             <TableHeader>
               <TableRow>
-                {sheetType === "petty_cash" ? (
+                {isPettyLike(sheetType) ? (
                   <>
                     <TableHead className="w-12">Nº</TableHead>
                     <TableHead className="w-28">Data</TableHead>
@@ -192,7 +413,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                     <TableHead><DropdownListEditor headerMode sheetType={sheetType} columnKey="receiver" label="Receiver" /></TableHead>
                     <TableHead className="text-right">Deposit</TableHead>
                     <TableHead className="text-right">Payment</TableHead>
-                    {sheetType === "mpesa" && <TableHead className="text-right">Bank charges</TableHead>}
+                    {isMpesaLike(sheetType) && <TableHead className="text-right">Bank charges</TableHead>}
                   </>
                 )}
                 {allocCols.map((c) => (
@@ -206,7 +427,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
             <TableBody>
               {withBalance.map((t) => (
                 <TableRow key={t.id}>
-                  {sheetType === "petty_cash" ? (
+                  {isPettyLike(sheetType) ? (
                     <>
                       <TableCell>{t.row_no}</TableCell>
                       <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
@@ -217,8 +438,12 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                         <DropdownListEditor sheetType={sheetType} columnKey="company" label="Empresa" value={t.company} onPick={(v) => updateLocal(t.id, { company: v })} />
                       </TableCell>
                       <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
-                      <TableCell className="text-right font-mono">{fmt(t.entrada)}</TableCell>
-                      <TableCell className="text-right font-mono">{fmt(t.saida)}</TableCell>
+                      <TableCell className="text-right">
+                        <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                      </TableCell>
                     </>
                   ) : (
                     <>
@@ -231,9 +456,17 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                       <TableCell>
                         <DropdownListEditor sheetType={sheetType} columnKey="receiver" label="Receiver" value={t.receiver} onPick={(v) => updateLocal(t.id, { receiver: v })} />
                       </TableCell>
-                      <TableCell className="text-right font-mono">{fmt(t.entrada)}</TableCell>
-                      <TableCell className="text-right font-mono">{fmt(t.saida)}</TableCell>
-                      {sheetType === "mpesa" && <TableCell className="text-right font-mono">{fmt(t.bank_charges)}</TableCell>}
+                      <TableCell className="text-right">
+                        <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                      </TableCell>
+                      {isMpesaLike(sheetType) && (
+                        <TableCell className="text-right">
+                          <Input type="number" step="0.01" value={t.bank_charges ?? ""} onChange={(e) => updateLocal(t.id, { bank_charges: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
+                        </TableCell>
+                      )}
                     </>
                   )}
                   {allocCols.map((c) => (
@@ -243,7 +476,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                 </TableRow>
               ))}
               {withBalance.length === 0 && (
-                <TableRow><TableCell colSpan={20} className="text-center text-muted-foreground py-8">No transactions — upload via the Upload page</TableCell></TableRow>
+                <TableRow><TableCell colSpan={20} className="text-center text-muted-foreground py-8">No transactions — use “Add row” or upload via the Upload page</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -256,6 +489,6 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
 export default function CashControlDisplay() {
   const { type } = useParams<{ type?: string }>();
   if (!type) return <PickerIndex />;
-  if (type !== "petty_cash" && type !== "emola" && type !== "mpesa") return <PickerIndex />;
-  return <SheetDisplay sheetType={type} />;
+  if (!CASH_TYPES.includes(type as CashType)) return <PickerIndex />;
+  return <SheetDisplay sheetType={type as CashType} />;
 }
