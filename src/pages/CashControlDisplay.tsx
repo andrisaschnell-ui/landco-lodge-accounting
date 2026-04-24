@@ -424,6 +424,13 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       >
         <div className="rounded-md border bg-card">
           <Table>
+      {/* Table area — same zoom context as the sticky toolbar above */}
+      <div
+        className="mt-3"
+        style={{ ["--cash-sticky-offset" as string]: `${stickyHeight}px` }}
+      >
+        <div className="rounded-md border bg-card">
+          <Table>
             <TableHeader className="sticky top-[var(--cash-sticky-offset,0px)] z-20 bg-background shadow-sm">
               <TableRow>
                   {isPettyLike(sheetType) ? (
@@ -514,6 +521,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
             </Table>
         </div>
       </div>
+      </div>{/* /zoomed container */}
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
       <FloatingSaveButton dirtyCount={Object.keys(dirty).length} onSave={saveAll} />
