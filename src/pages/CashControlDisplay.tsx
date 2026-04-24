@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Download, ArrowLeft, Save, Plus, CalendarPlus } from "lucide-react";
 import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
 import { ZoomControl } from "@/components/cash/ZoomControl";
+import { FloatingSaveButton } from "@/components/cash/FloatingSaveButton";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
 
