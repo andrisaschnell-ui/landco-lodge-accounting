@@ -417,13 +417,6 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
         </div>
       </div>
 
-      {/* Zoomable content area — no inner scroll container so page scroll drives sticky thead */}
-      <div
-        className="mt-3"
-        style={{ zoom: `${zoom}%`, ["--cash-sticky-offset" as string]: `${theadOffsetPx}px` }}
-      >
-        <div className="rounded-md border bg-card">
-          <Table>
       {/* Table area — same zoom context as the sticky toolbar above */}
       <div
         className="mt-3"
