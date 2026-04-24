@@ -13,7 +13,6 @@ import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
 import { ZoomControl } from "@/components/cash/ZoomControl";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
-import { useCallback, useState as useReactState } from "react";
 
 type CashType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two";
 
