@@ -294,10 +294,27 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   };
   const [zoom, setZoom] = useState<number>(100);
 
+  // Measure the sticky toolbar height so the table <thead> can pin right below it.
+  const stickyRef = useRef<HTMLDivElement | null>(null);
+  const [stickyHeight, setStickyHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!stickyRef.current) return;
+    const el = stickyRef.current;
+    const update = () => setStickyHeight(el.getBoundingClientRect().height);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => { ro.disconnect(); window.removeEventListener("resize", update); };
+  }, [selected, isJanuary, allocCols.length]);
+
+  // The CSS `zoom` property scales sticky offsets too. Compensate by dividing.
+  const theadOffsetPx = Math.round(stickyHeight / (zoom / 100));
+
   return (
     <div className="relative">
-      {/* Sticky top region: toolbar + opening-balance card + table-controls row */}
-      <div className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+      {/* Sticky top region: toolbar + opening-balance card + allocation-controls row */}
+      <div ref={stickyRef} className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
         <div className="flex items-center justify-between flex-wrap gap-3 py-2">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" asChild><Link to="/cash-control"><ArrowLeft className="h-4 w-4 mr-1" />Back</Link></Button>
