@@ -393,16 +393,15 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
         </div>
       </div>
 
-      {/* Zoomable content area */}
+      {/* Zoomable content area — no inner scroll container so page scroll drives sticky thead */}
       <div
         className="mt-3"
         style={{ zoom: `${zoom}%` }}
       >
-        <Card>
-          <CardContent className="p-0 overflow-auto">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
-                <TableRow>
+        <div className="rounded-md border bg-card">
+          <Table>
+            <TableHeader className="sticky top-[var(--cash-sticky-offset,0px)] z-20 bg-background shadow-sm">
+              <TableRow>
                   {isPettyLike(sheetType) ? (
                     <>
                       <TableHead className="w-12 bg-background">Nº</TableHead>
@@ -489,8 +488,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
