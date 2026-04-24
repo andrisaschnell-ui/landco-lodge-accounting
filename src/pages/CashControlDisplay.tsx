@@ -488,8 +488,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
