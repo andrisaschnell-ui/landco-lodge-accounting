@@ -510,6 +510,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
       </div>
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
+      <FloatingSaveButton dirtyCount={Object.keys(dirty).length} onSave={saveAll} />
     </div>
   );
 }
