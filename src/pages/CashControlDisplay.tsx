@@ -10,8 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Download, ArrowLeft, Save, Plus, CalendarPlus } from "lucide-react";
 import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
+import { ZoomControl } from "@/components/cash/ZoomControl";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
+import { useCallback, useState as useReactState } from "react";
 
 type CashType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two";
 
