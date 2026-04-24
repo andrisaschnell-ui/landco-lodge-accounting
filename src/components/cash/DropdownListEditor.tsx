@@ -7,7 +7,7 @@ import { Plus, Pencil, Trash2, Check, X, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Props {
-  sheetType: "petty_cash" | "emola" | "mpesa";
+  sheetType: string;
   columnKey: string;
   label: string;
   /** Controlled current value (may be null) */

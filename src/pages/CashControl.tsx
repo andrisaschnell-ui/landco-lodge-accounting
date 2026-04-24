@@ -2,12 +2,21 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, Smartphone, CreditCard } from "lucide-react";
+import { Wallet, Smartphone, CreditCard, Banknote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Summary { count: number; sheets: number; lastMonth: string; opening: number; }
 
 const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const CARDS = [
+  { key: "petty_cash",  title: "Cash Ebony",   desc: "Money Box Ebony — cheques & cash",   icon: Wallet },
+  { key: "cash_landco", title: "Cash Landco",  desc: "Money Box Landco — cheques & cash",  icon: Banknote },
+  { key: "emola",       title: "Emola One",    desc: "Mobile payments (account 1)",        icon: Smartphone },
+  { key: "emola_two",   title: "Emola Two",    desc: "Mobile payments (account 2)",        icon: Smartphone },
+  { key: "mpesa",       title: "Mpesa One",    desc: "Mobile payments (account 1)",        icon: CreditCard },
+  { key: "mpesa_two",   title: "Mpesa Two",    desc: "Mobile payments (account 2)",        icon: CreditCard },
+] as const;
 
 export default function CashControl() {
   const [summaries, setSummaries] = useState<Record<string, Summary>>({});
@@ -15,13 +24,20 @@ export default function CashControl() {
 
   useEffect(() => {
     (async () => {
-      const types = ["petty_cash", "emola", "mpesa"] as const;
       const out: Record<string, Summary> = {};
-      for (const t of types) {
-        const { data: sheets } = await supabase.from("cash_sheets").select("id, month, year, opening_balance").eq("sheet_type", t).order("year", { ascending: false }).order("month", { ascending: false });
-        const { count } = await supabase.from("cash_transactions").select("id", { count: "exact", head: true }).eq("sheet_type", t);
+      for (const c of CARDS) {
+        const { data: sheets } = await supabase
+          .from("cash_sheets")
+          .select("id, month, year, opening_balance")
+          .eq("sheet_type", c.key)
+          .order("year", { ascending: false })
+          .order("month", { ascending: false });
+        const { count } = await supabase
+          .from("cash_transactions")
+          .select("id", { count: "exact", head: true })
+          .eq("sheet_type", c.key);
         const latest = sheets?.[0];
-        out[t] = {
+        out[c.key] = {
           count: count ?? 0,
           sheets: sheets?.length ?? 0,
           lastMonth: latest ? `${latest.month ? String(latest.month).padStart(2, "0") + "/" : ""}${latest.year}` : "—",
@@ -33,12 +49,6 @@ export default function CashControl() {
     })();
   }, []);
 
-  const cards = [
-    { key: "petty_cash", title: "Petty Cash", desc: "Money Box — cheques & cash", icon: Wallet },
-    { key: "emola", title: "Emola", desc: "Mobile payments", icon: Smartphone },
-    { key: "mpesa", title: "Mpesa", desc: "Mobile payments", icon: CreditCard },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
@@ -47,7 +57,7 @@ export default function CashControl() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {cards.map((c) => {
+        {CARDS.map((c) => {
           const s = summaries[c.key];
           return (
             <Link key={c.key} to={`/cash-control/display/${c.key}`}>
