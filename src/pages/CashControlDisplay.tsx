@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Download, ArrowLeft, Save, Plus, CalendarPlus } from "lucide-react";
 import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
@@ -316,9 +315,10 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
 
   return (
     <div className="relative">
+      <div className="h-[calc(100vh-8rem)] overflow-auto">
       {/* Single zoomed container — toolbar + table share the same scroll/zoom context.
           This is the only way `position: sticky` works correctly under CSS `zoom`. */}
-      <div style={{ zoom: `${zoom}%` }}>
+      <div className="min-w-full" style={{ zoom: `${zoom}%` }}>
       {/* Sticky top region: toolbar + opening-balance card + allocation-controls row */}
       <div ref={stickyRef} className="sticky top-0 z-30 -mx-2 bg-background/95 px-2 pb-2 pt-1 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
         <div className="flex items-center justify-between flex-wrap gap-3 py-2">
@@ -423,98 +423,99 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
         style={{ ["--cash-sticky-offset" as string]: `${stickyHeight}px` }}
       >
         <div className="rounded-md border bg-card">
-          <Table>
-            <TableHeader className="sticky top-[var(--cash-sticky-offset,0px)] z-20 bg-background shadow-sm">
-              <TableRow>
+          <table className="w-max min-w-full caption-bottom text-sm">
+            <thead className="bg-background shadow-sm">
+              <tr className="border-b transition-colors hover:bg-muted/50">
                   {isPettyLike(sheetType) ? (
                     <>
-                      <TableHead className="w-12 bg-background">Nº</TableHead>
-                      <TableHead className="w-28 bg-background">Data</TableHead>
-                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" /></TableHead>
-                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="company" label="Empresa" /></TableHead>
-                      <TableHead className="bg-background">Descrição</TableHead>
-                      <TableHead className="text-right bg-background">Entradas</TableHead>
-                      <TableHead className="text-right bg-background">Saídas</TableHead>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 w-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground">Nº</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 w-28 bg-background px-4 text-left align-middle font-medium text-muted-foreground">Data</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground"><DropdownListEditor headerMode sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" /></th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground"><DropdownListEditor headerMode sheetType={sheetType} columnKey="company" label="Empresa" /></th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground">Descrição</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-medium text-muted-foreground">Entradas</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-medium text-muted-foreground">Saídas</th>
                     </>
                   ) : (
                     <>
-                      <TableHead className="w-28 bg-background">Date</TableHead>
-                      <TableHead className="bg-background">Description</TableHead>
-                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="funder" label="Funder" /></TableHead>
-                      <TableHead className="bg-background">Cell No</TableHead>
-                      <TableHead className="bg-background"><DropdownListEditor headerMode sheetType={sheetType} columnKey="receiver" label="Receiver" /></TableHead>
-                      <TableHead className="text-right bg-background">Deposit</TableHead>
-                      <TableHead className="text-right bg-background">Payment</TableHead>
-                      {isMpesaLike(sheetType) && <TableHead className="text-right bg-background">Bank charges</TableHead>}
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 w-28 bg-background px-4 text-left align-middle font-medium text-muted-foreground">Date</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground">Description</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground"><DropdownListEditor headerMode sheetType={sheetType} columnKey="funder" label="Funder" /></th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground">Cell No</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-left align-middle font-medium text-muted-foreground"><DropdownListEditor headerMode sheetType={sheetType} columnKey="receiver" label="Receiver" /></th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-medium text-muted-foreground">Deposit</th>
+                      <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-medium text-muted-foreground">Payment</th>
+                      {isMpesaLike(sheetType) && <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-medium text-muted-foreground">Bank charges</th>}
                     </>
                   )}
                   {allocCols.map((c) => (
-                    <TableHead key={c} className="text-right bg-background">
+                    <th key={c} className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-medium text-muted-foreground">
                       <DropdownListEditor headerMode sheetType={sheetType} columnKey={`alloc:${c}`} label={c} />
-                    </TableHead>
+                    </th>
                   ))}
-                  <TableHead className="text-right font-semibold bg-background">Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+                  <th className="sticky top-[var(--cash-sticky-offset,0px)] z-20 h-12 bg-background px-4 text-right align-middle font-semibold text-foreground">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
                 {withBalance.map((t) => (
-                  <TableRow key={t.id}>
+                  <tr key={t.id} className="border-b transition-colors data-[state=selected]:bg-muted hover:bg-muted/50">
                     {isPettyLike(sheetType) ? (
                       <>
-                        <TableCell>{t.row_no}</TableCell>
-                        <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
-                        <TableCell>
+                        <td className="p-4 align-middle">{t.row_no}</td>
+                        <td className="p-4 align-middle"><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></td>
+                        <td className="p-4 align-middle">
                           <DropdownListEditor sheetType={sheetType} columnKey="cheque_type" label="Nº Cheque" value={t.cheque_no} onPick={(v) => updateLocal(t.id, { cheque_no: v })} />
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="p-4 align-middle">
                           <DropdownListEditor sheetType={sheetType} columnKey="company" label="Empresa" value={t.company} onPick={(v) => updateLocal(t.id, { company: v })} />
-                        </TableCell>
-                        <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="p-4 align-middle"><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 min-w-[180px] text-xs" /></td>
+                        <td className="p-4 text-right align-middle">
                           <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="p-4 text-right align-middle">
                           <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                        </TableCell>
+                        </td>
                       </>
                     ) : (
                       <>
-                        <TableCell><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></TableCell>
-                        <TableCell><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 text-xs min-w-[180px]" /></TableCell>
-                        <TableCell>
+                        <td className="p-4 align-middle"><Input type="date" value={t.tx_date ?? ""} onChange={(e) => updateLocal(t.id, { tx_date: e.target.value })} className="h-7 text-xs w-32" /></td>
+                        <td className="p-4 align-middle"><Input value={t.description ?? ""} onChange={(e) => updateLocal(t.id, { description: e.target.value })} className="h-7 min-w-[180px] text-xs" /></td>
+                        <td className="p-4 align-middle">
                           <DropdownListEditor sheetType={sheetType} columnKey="funder" label="Funder" value={t.funder} onPick={(v) => updateLocal(t.id, { funder: v })} />
-                        </TableCell>
-                        <TableCell><Input value={t.cell_no ?? ""} onChange={(e) => updateLocal(t.id, { cell_no: e.target.value })} className="h-7 text-xs w-28" /></TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="p-4 align-middle"><Input value={t.cell_no ?? ""} onChange={(e) => updateLocal(t.id, { cell_no: e.target.value })} className="h-7 text-xs w-28" /></td>
+                        <td className="p-4 align-middle">
                           <DropdownListEditor sheetType={sheetType} columnKey="receiver" label="Receiver" value={t.receiver} onPick={(v) => updateLocal(t.id, { receiver: v })} />
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="p-4 text-right align-middle">
                           <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </td>
+                        <td className="p-4 text-right align-middle">
                           <Input type="number" step="0.01" value={t.saida ?? ""} onChange={(e) => updateLocal(t.id, { saida: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                        </TableCell>
+                        </td>
                         {isMpesaLike(sheetType) && (
-                          <TableCell className="text-right">
+                          <td className="p-4 text-right align-middle">
                             <Input type="number" step="0.01" value={t.bank_charges ?? ""} onChange={(e) => updateLocal(t.id, { bank_charges: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />
-                          </TableCell>
+                          </td>
                         )}
                       </>
                     )}
                     {allocCols.map((c) => (
-                      <TableCell key={c} className="text-right font-mono text-xs">{fmt(t.allocations?.[c])}</TableCell>
+                      <td key={c} className="p-4 text-right align-middle font-mono text-xs">{fmt(t.allocations?.[c])}</td>
                     ))}
-                    <TableCell className="text-right font-mono font-semibold">{fmt((t as Tx & { _balance: number })._balance)}</TableCell>
-                  </TableRow>
+                    <td className="p-4 text-right align-middle font-mono font-semibold">{fmt((t as Tx & { _balance: number })._balance)}</td>
+                  </tr>
                 ))}
                 {withBalance.length === 0 && (
-                  <TableRow><TableCell colSpan={20} className="text-center text-muted-foreground py-8">No transactions — use "Add row" or upload via the Upload page</TableCell></TableRow>
+                  <tr><td colSpan={20} className="p-4 py-8 text-center align-middle text-muted-foreground">No transactions — use "Add row" or upload via the Upload page</td></tr>
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
         </div>
       </div>
       </div>{/* /zoomed container */}
+      </div>
 
       <ZoomControl storageKey={`cash-zoom:${sheetType}`} onChange={setZoom} />
       <FloatingSaveButton dirtyCount={Object.keys(dirty).length} onSave={saveAll} />
