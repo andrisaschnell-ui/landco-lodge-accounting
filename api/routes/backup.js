@@ -196,6 +196,16 @@ export default function backupRoutes(requireAuth) {
 
     try {
       await runCmd("pg_dump", args, { stdoutFile: filepath });
+      // Strip Postgres 17-only GUCs so the dump can be restored on Postgres 15/16.
+      // pg_dump v17 emits `SET transaction_timeout = 0;` which older servers reject.
+      try {
+        const raw = fs.readFileSync(filepath, "utf8");
+        const cleaned = raw
+          .split("\n")
+          .filter((l) => !/^SET\s+transaction_timeout\b/i.test(l.trim()))
+          .join("\n");
+        if (cleaned !== raw) fs.writeFileSync(filepath, cleaned);
+      } catch { /* best-effort sanitisation */ }
       const stat = fs.statSync(filepath);
       res.json({ ok: true, filename, size: stat.size, target });
     } catch (e) {
