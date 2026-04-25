@@ -97,6 +97,58 @@ app.post("/auth/login", async (req, res) => {
 
 app.get("/auth/me", requireAuth, (req, res) => res.json({ user: req.user }));
 
+// ---------- repair users (recreates the two admin accounts) ----------
+// Public endpoint by design: lets you log back in when credentials are lost.
+// Protected only by knowing the two fixed admin emails (it never changes any
+// other accounts). Hashes are generated fresh each call.
+const REPAIR_USERS = [
+  { email: "cwschnell@gmail.com",       password: "Abcd7654$", display_name: "CW Schnell" },
+  { email: "andrisa.schnell@gmail.com", password: "Abcd7654#", display_name: "Andrisa Schnell" },
+];
+
+app.post("/auth/repair-users", async (_req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("CREATE SCHEMA IF NOT EXISTS auth");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS auth.users (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        email text UNIQUE NOT NULL,
+        password_hash text NOT NULL,
+        display_name text,
+        created_at timestamptz DEFAULT now()
+      )`);
+
+    const results = [];
+    for (const u of REPAIR_USERS) {
+      const hash = bcrypt.hashSync(u.password, 10);
+      const { rows } = await client.query(
+        `INSERT INTO auth.users (email, password_hash, display_name)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
+         RETURNING id, email`,
+        [u.email, hash, u.display_name]
+      );
+      const userId = rows[0].id;
+      await client.query(
+        `INSERT INTO public.user_roles (user_id, role)
+         VALUES ($1, 'admin'::app_role)
+         ON CONFLICT (user_id, role) DO NOTHING`,
+        [userId]
+      );
+      results.push({ email: rows[0].email, id: userId, role: "admin" });
+    }
+    await client.query("COMMIT");
+    res.json({ ok: true, repaired: results });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 // ---------- modular routes ----------
 app.use('/api/journal', journalRoutes(pool, TABLES, requireAuth));
 app.use('/api/invoices', invoiceRoutes(pool, TABLES, requireAuth));
