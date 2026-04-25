@@ -12,6 +12,7 @@ import journalRoutes from './routes/journal.js';
 import invoiceRoutes from './routes/invoices.js';
 import reportRoutes from './routes/reports.js';
 import cashControlRoutes from './routes/cash_control.js';
+import backupRoutes from './routes/backup.js';
 
 const { Pool } = pkg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -101,6 +102,7 @@ app.use('/api/journal', journalRoutes(pool, TABLES, requireAuth));
 app.use('/api/invoices', invoiceRoutes(pool, TABLES, requireAuth));
 app.use('/api/reports', reportRoutes(pool, requireAuth));
 app.use('/api/cash-control', cashControlRoutes(pool, requireAuth));
+app.use('/api/backup', backupRoutes(requireAuth));
 
 // ---------- generic table API ----------
 app.get("/api/:table", requireAuth, async (req, res) => {

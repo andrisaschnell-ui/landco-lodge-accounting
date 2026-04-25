@@ -2,7 +2,7 @@ import {
   LayoutDashboard, ArrowLeftRight, Users, Building2, Briefcase,
   FileSpreadsheet, Upload, LogOut, BarChart3,
   BookOpen, ReceiptText, FileText, Settings2, BarChart, AlertTriangle,
-  Wallet, Eye, ClipboardList,
+  Wallet, Eye, ClipboardList, Database,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -39,6 +39,10 @@ const cashControlItems = [
   { title: "Cash Control Uploaded", url: "/cash-control", icon: Wallet },
   { title: "Cash Control Display", url: "/cash-control/display", icon: Eye },
   { title: "Control Report", url: "/cash-control/reports", icon: ClipboardList },
+];
+
+const databaseBackupItems = [
+  { title: "Dashboard", url: "/database-backup", icon: Database },
 ];
 
 export function AppSidebar() {
@@ -113,6 +117,32 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/cash-control"}
+                      className="hover:bg-muted/50"
+                      activeClassName="bg-muted text-primary font-medium"
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Spacer + Database Backup (admin tooling) */}
+        <div className="h-4" aria-hidden />
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            {!collapsed && <span className="font-bold">Database Backup</span>}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {databaseBackupItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
                       className="hover:bg-muted/50"
                       activeClassName="bg-muted text-primary font-medium"
                     >
