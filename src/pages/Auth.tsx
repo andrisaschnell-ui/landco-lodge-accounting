@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { login as localLogin } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
@@ -20,8 +21,16 @@ export default function Auth() {
     setLoading(true);
 
     if (isLogin) {
+      try {
+        await localLogin(email, password);
+        window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
+      } catch (localError: any) {
+        toast({ title: "Login failed", description: localError.message, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      if (error) console.warn("Cloud auth login skipped:", error.message);
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
