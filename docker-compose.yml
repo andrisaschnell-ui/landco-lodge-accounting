@@ -30,14 +30,14 @@ services:
       - ./api:/app
       - ./scripts:/app/scripts
       - ./db/backups:/app/backups
-      # USB drive mounts (Windows host). Backup UI auto-detects which are
-      # currently connected; missing ones are silently skipped.
-      # Edit drive letters to match your machine. On Linux/Mac, point at the
-      # mount point of the drive (e.g. /media/usb).
-      - E:/:/mnt/usb_e
-      - F:/:/mnt/usb_f
-      - G:/:/mnt/usb_g
-      - H:/:/mnt/usb_h
+      # USB drive mounts (Windows host). Docker REQUIRES the drive to exist at
+      # build/start time — it will NOT silently skip missing drives. Uncomment
+      # only the lines for drives that are currently plugged in. You can also
+      # add/remove lines later and run `docker compose up -d` to re-apply.
+      # - E:/:/mnt/usb_e
+      # - F:/:/mnt/usb_f
+      # - G:/:/mnt/usb_g
+      # - H:/:/mnt/usb_h
       - /app/node_modules
     environment:
       - DATABASE_URL=postgres://postgres:root@db:5432/landco_v2_db
