@@ -1,15 +1,32 @@
 // Backup / Restore routes for LANACC PostgreSQL database.
 // Three scopes: 'landco' (accounting + master data), 'cash' (cash module),
-// 'complete' (entire public schema). Files live in /app/backups/<scope>/.
+// 'complete' (entire public schema).
 //
-// All endpoints require admin role.
+// Targets:
+//   - 'local' → /app/backups/<scope>/                (always available)
+//   - 'usb_e' / 'usb_f' / 'usb_g' / 'usb_h'          (only if path exists & writable)
+//     → maps to /mnt/usb_e/Lanco Backup/<scope>/ etc.
+//
+// USB drive letters must be pre-mounted via docker-compose.yml.
+// The API auto-detects which USB targets are currently writable;
+// disconnected drives are silently skipped.
+//
+// All write/restore endpoints require admin role.
 
 import express from "express";
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 
-const BACKUP_ROOT = process.env.BACKUP_DIR || "/app/backups";
+const LOCAL_ROOT = process.env.BACKUP_DIR || "/app/backups";
+const USB_FOLDER = "Lanco Backup"; // created on the USB drive if missing
+
+const USB_MOUNTS = {
+  usb_e: { path: "/mnt/usb_e", label: "USB E:" },
+  usb_f: { path: "/mnt/usb_f", label: "USB F:" },
+  usb_g: { path: "/mnt/usb_g", label: "USB G:" },
+  usb_h: { path: "/mnt/usb_h", label: "USB H:" },
+};
 
 const SCOPES = {
   landco: {
@@ -38,8 +55,36 @@ const SCOPES = {
   },
 };
 
-function scopeDir(scope) {
-  const dir = path.join(BACKUP_ROOT, scope);
+// ---- target / path helpers ----
+
+function isWritable(p) {
+  try {
+    if (!fs.existsSync(p)) return false;
+    fs.accessSync(p, fs.constants.W_OK);
+    return true;
+  } catch { return false; }
+}
+
+/** Returns [{key, label, available}] for local + every configured USB. */
+function listTargets() {
+  const out = [{ key: "local", label: "Local container folder", available: true }];
+  for (const [key, m] of Object.entries(USB_MOUNTS)) {
+    out.push({ key, label: m.label, available: isWritable(m.path) });
+  }
+  return out;
+}
+
+/** Resolve scope dir for a target, creating intermediate folders as needed. */
+function resolveDir(target, scope) {
+  if (target === "local") {
+    const dir = path.join(LOCAL_ROOT, scope);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+  const usb = USB_MOUNTS[target];
+  if (!usb) throw new Error(`unknown target: ${target}`);
+  if (!isWritable(usb.path)) throw new Error(`${usb.label} is not connected or not writable`);
+  const dir = path.join(usb.path, USB_FOLDER, scope);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -101,34 +146,46 @@ function requireAdmin(req, res, next) {
 export default function backupRoutes(requireAuth) {
   const r = express.Router();
 
-  // List available scopes (used by UI)
   r.get("/scopes", requireAuth, (_req, res) => {
-    res.json(Object.entries(SCOPES).map(([key, v]) => ({
-      key, label: v.label,
-    })));
+    res.json(Object.entries(SCOPES).map(([key, v]) => ({ key, label: v.label })));
   });
 
-  // List backups in a scope
+  // List backup targets (local + any connected USB drives)
+  r.get("/targets", requireAuth, (_req, res) => {
+    res.json(listTargets());
+  });
+
+  // List backups in a (scope, target)
   r.get("/list", requireAuth, (req, res) => {
     const scope = String(req.query.scope || "");
+    const target = String(req.query.target || "local");
     if (!SCOPES[scope]) return res.status(400).json({ error: "unknown scope" });
-    const dir = scopeDir(scope);
-    const files = fs.readdirSync(dir)
-      .filter((f) => f.endsWith(".sql"))
-      .map((f) => {
-        const stat = fs.statSync(path.join(dir, f));
-        return { filename: f, size: stat.size, mtime: stat.mtime };
-      })
-      .sort((a, b) => b.mtime - a.mtime);
-    res.json(files);
+    try {
+      const dir = resolveDir(target, scope);
+      const files = fs.readdirSync(dir)
+        .filter((f) => f.endsWith(".sql"))
+        .map((f) => {
+          const stat = fs.statSync(path.join(dir, f));
+          return { filename: f, size: stat.size, mtime: stat.mtime };
+        })
+        .sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
+      res.json(files);
+    } catch (e) {
+      // Disconnected USB → return empty list rather than 500
+      res.json([]);
+    }
   });
 
-  // Create a backup
+  // Create a backup at the chosen target
   r.post("/create", requireAuth, requireAdmin, async (req, res) => {
-    const { scope, note } = req.body || {};
+    const { scope, note, target = "local" } = req.body || {};
     if (!SCOPES[scope]) return res.status(400).json({ error: "unknown scope" });
     const cfg = SCOPES[scope];
-    const dir = scopeDir(scope);
+
+    let dir;
+    try { dir = resolveDir(target, scope); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+
     const filename = `${scope}_${timestamp()}${safeNote(note)}.sql`;
     const filepath = path.join(dir, filename);
 
@@ -140,7 +197,7 @@ export default function backupRoutes(requireAuth) {
     try {
       await runCmd("pg_dump", args, { stdoutFile: filepath });
       const stat = fs.statSync(filepath);
-      res.json({ ok: true, filename, size: stat.size });
+      res.json({ ok: true, filename, size: stat.size, target });
     } catch (e) {
       try { fs.unlinkSync(filepath); } catch {}
       res.status(500).json({ error: e.message });
@@ -149,17 +206,22 @@ export default function backupRoutes(requireAuth) {
 
   // Restore a backup (overwrites current data in scope)
   r.post("/restore", requireAuth, requireAdmin, async (req, res) => {
-    const { scope, filename } = req.body || {};
+    const { scope, filename, target = "local" } = req.body || {};
     if (!SCOPES[scope]) return res.status(400).json({ error: "unknown scope" });
     if (!filename || filename.includes("/") || filename.includes("..")) {
       return res.status(400).json({ error: "invalid filename" });
     }
-    const filepath = path.join(scopeDir(scope), filename);
+
+    let dir;
+    try { dir = resolveDir(target, scope); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+
+    const filepath = path.join(dir, filename);
     if (!fs.existsSync(filepath)) return res.status(404).json({ error: "backup not found" });
 
     try {
       await runCmd("psql", ["-v", "ON_ERROR_STOP=1", "-1"], { stdinFile: filepath });
-      res.json({ ok: true, restored: filename });
+      res.json({ ok: true, restored: filename, target });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
@@ -168,25 +230,35 @@ export default function backupRoutes(requireAuth) {
   // Download a backup file
   r.get("/download", requireAuth, (req, res) => {
     const scope = String(req.query.scope || "");
+    const target = String(req.query.target || "local");
     const filename = String(req.query.filename || "");
     if (!SCOPES[scope]) return res.status(400).json({ error: "unknown scope" });
     if (!filename || filename.includes("/") || filename.includes("..")) {
       return res.status(400).json({ error: "invalid filename" });
     }
-    const filepath = path.join(scopeDir(scope), filename);
+    let dir;
+    try { dir = resolveDir(target, scope); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+
+    const filepath = path.join(dir, filename);
     if (!fs.existsSync(filepath)) return res.status(404).json({ error: "not found" });
     res.download(filepath, filename);
   });
 
-  // Delete a backup file (admin only)
+  // Delete a backup file
   r.delete("/file", requireAuth, requireAdmin, (req, res) => {
     const scope = String(req.query.scope || "");
+    const target = String(req.query.target || "local");
     const filename = String(req.query.filename || "");
     if (!SCOPES[scope]) return res.status(400).json({ error: "unknown scope" });
     if (!filename || filename.includes("/") || filename.includes("..")) {
       return res.status(400).json({ error: "invalid filename" });
     }
-    const filepath = path.join(scopeDir(scope), filename);
+    let dir;
+    try { dir = resolveDir(target, scope); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+
+    const filepath = path.join(dir, filename);
     if (!fs.existsSync(filepath)) return res.status(404).json({ error: "not found" });
     fs.unlinkSync(filepath);
     res.json({ ok: true });
