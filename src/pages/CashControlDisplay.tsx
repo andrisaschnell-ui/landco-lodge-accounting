@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Download, ArrowLeft, Save, Plus, CalendarPlus } from "lucide-react";
 import { DropdownListEditor } from "@/components/cash/DropdownListEditor";
+import { ReceiverContactPicker } from "@/components/cash/ReceiverContactPicker";
 import { ZoomControl } from "@/components/cash/ZoomControl";
 import { FloatingSaveButton } from "@/components/cash/FloatingSaveButton";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
@@ -484,9 +485,21 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
                         <td className="p-4 align-middle">
                           <DropdownListEditor sheetType={sheetType} columnKey="funder" label="Funder" value={t.funder} onPick={(v) => updateLocal(t.id, { funder: v })} />
                         </td>
-                        <td className="p-4 align-middle"><Input value={t.cell_no ?? ""} onChange={(e) => updateLocal(t.id, { cell_no: e.target.value })} className="h-7 text-xs w-28" /></td>
                         <td className="p-4 align-middle">
-                          <DropdownListEditor sheetType={sheetType} columnKey="receiver" label="Receiver" value={t.receiver} onPick={(v) => updateLocal(t.id, { receiver: v })} />
+                          <ReceiverContactPicker
+                            field="cell_no"
+                            cellNo={t.cell_no}
+                            receiver={t.receiver}
+                            onChange={(v) => updateLocal(t.id, { cell_no: v.cell_no, receiver: v.receiver })}
+                          />
+                        </td>
+                        <td className="p-4 align-middle">
+                          <ReceiverContactPicker
+                            field="receiver"
+                            cellNo={t.cell_no}
+                            receiver={t.receiver}
+                            onChange={(v) => updateLocal(t.id, { cell_no: v.cell_no, receiver: v.receiver })}
+                          />
                         </td>
                         <td className="p-4 text-right align-middle">
                           <Input type="number" step="0.01" value={t.entrada ?? ""} onChange={(e) => updateLocal(t.id, { entrada: e.target.value === "" ? null : Number(e.target.value) })} className="h-7 text-xs w-24 text-right font-mono" />

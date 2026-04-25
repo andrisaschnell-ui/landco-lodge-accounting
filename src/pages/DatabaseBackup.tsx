@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import { Database, Download, Upload, RefreshCw, Trash2 } from "lucide-react";
+import { Database, Download, Upload, RefreshCw, Trash2, HardDrive } from "lucide-react";
 
 type Scope = "landco" | "cash" | "complete";
 
@@ -20,6 +20,7 @@ const SCOPES: { key: Scope; label: string; description: string }[] = [
 ];
 
 interface BackupFile { filename: string; size: number; mtime: string; }
+interface Target { key: string; label: string; available: boolean; }
 
 function formatSize(b: number) {
   if (b < 1024) return `${b} B`;
@@ -27,19 +28,68 @@ function formatSize(b: number) {
   return `${(b / 1024 / 1024).toFixed(2)} MB`;
 }
 
-function BackupCard({ scope, label, description }: { scope: Scope; label: string; description: string }) {
+function useTargets() {
+  const [targets, setTargets] = useState<Target[]>([
+    { key: "local", label: "Local container folder", available: true },
+  ]);
+  const refresh = async () => {
+    try {
+      const r = await api<Target[]>(`/api/backup/targets`);
+      setTargets(r);
+    } catch { /* keep last */ }
+  };
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 10000); // re-poll every 10s for USB plug/unplug
+    return () => clearInterval(id);
+  }, []);
+  return { targets, refresh };
+}
+
+function TargetSelect({
+  targets, value, onChange,
+}: { targets: Target[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {targets.map((t) => (
+          <SelectItem key={t.key} value={t.key} disabled={!t.available}>
+            <span className="flex items-center gap-2">
+              {t.key === "local"
+                ? <Database className="h-3 w-3" />
+                : <HardDrive className="h-3 w-3" />}
+              {t.label}
+              {!t.available && <span className="text-xs text-muted-foreground">(not connected)</span>}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function BackupCard({
+  scope, label, description, targets,
+}: { scope: Scope; label: string; description: string; targets: Target[] }) {
   const { toast } = useToast();
   const [note, setNote] = useState("");
+  const [target, setTarget] = useState<string>("local");
   const [busy, setBusy] = useState(false);
 
   async function create() {
     setBusy(true);
     try {
-      const r = await api<{ filename: string; size: number }>(
+      const r = await api<{ filename: string; size: number; target: string }>(
         `/api/backup/create`,
-        { method: "POST", body: JSON.stringify({ scope, note }) }
+        { method: "POST", body: JSON.stringify({ scope, note, target }) }
       );
-      toast({ title: `Backup created`, description: `${r.filename} (${formatSize(r.size)})` });
+      toast({
+        title: `Backup created`,
+        description: `${r.filename} (${formatSize(r.size)}) → ${r.target}`,
+      });
       setNote("");
       window.dispatchEvent(new CustomEvent(`backup-list-refresh-${scope}`));
     } catch (e: any) {
@@ -59,6 +109,13 @@ function BackupCard({ scope, label, description }: { scope: Scope; label: string
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-1">
+          <Label>Backup target</Label>
+          <TargetSelect targets={targets} value={target} onChange={setTarget} />
+          <p className="text-[11px] text-muted-foreground">
+            USB drives appear here once plugged in. They are saved to <code>Lanco Backup/{scope}/</code> on the drive.
+          </p>
+        </div>
+        <div className="space-y-1">
           <Label htmlFor={`note-${scope}`}>Optional note (appended to filename)</Label>
           <Input
             id={`note-${scope}`}
@@ -68,7 +125,7 @@ function BackupCard({ scope, label, description }: { scope: Scope; label: string
             maxLength={40}
           />
           <p className="text-xs text-muted-foreground">
-            Filename will be <code>{scope}_YYYY-MM-DD_HHMM{note ? `_${note.replace(/[^a-zA-Z0-9_-]+/g, "-")}` : ""}.sql</code>
+            Filename: <code>{scope}_YYYY-MM-DD_HHMM{note ? `_${note.replace(/[^a-zA-Z0-9_-]+/g, "-")}` : ""}.sql</code>
           </p>
         </div>
         <Button onClick={create} disabled={busy} className="w-full">
@@ -79,16 +136,19 @@ function BackupCard({ scope, label, description }: { scope: Scope; label: string
   );
 }
 
-function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
+function RestoreCard({
+  scope, label, targets,
+}: { scope: Scope; label: string; targets: Target[] }) {
   const { toast } = useToast();
   const [files, setFiles] = useState<BackupFile[]>([]);
+  const [target, setTarget] = useState<string>("local");
   const [selected, setSelected] = useState<string>("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function loadFiles() {
     try {
-      const r = await api<BackupFile[]>(`/api/backup/list?scope=${scope}`);
+      const r = await api<BackupFile[]>(`/api/backup/list?scope=${scope}&target=${target}`);
       setFiles(r);
       if (!r.find((f) => f.filename === selected)) setSelected("");
     } catch (e: any) {
@@ -102,7 +162,7 @@ function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
     window.addEventListener(`backup-list-refresh-${scope}`, handler);
     return () => window.removeEventListener(`backup-list-refresh-${scope}`, handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
+  }, [scope, target]);
 
   async function restore() {
     if (!selected) return;
@@ -110,9 +170,9 @@ function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
     try {
       await api(`/api/backup/restore`, {
         method: "POST",
-        body: JSON.stringify({ scope, filename: selected }),
+        body: JSON.stringify({ scope, filename: selected, target }),
       });
-      toast({ title: "Restore complete", description: selected });
+      toast({ title: "Restore complete", description: `${selected} (from ${target})` });
       setConfirm(false);
     } catch (e: any) {
       toast({ title: "Restore failed", description: e.message, variant: "destructive" });
@@ -123,7 +183,7 @@ function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
 
   function download() {
     if (!selected) return;
-    const url = `${window.location.protocol}//${window.location.hostname}:4000/api/backup/download?scope=${scope}&filename=${encodeURIComponent(selected)}`;
+    const url = `${window.location.protocol}//${window.location.hostname}:4000/api/backup/download?scope=${scope}&target=${target}&filename=${encodeURIComponent(selected)}`;
     const token = localStorage.getItem("lanacc_token") || "";
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.blob())
@@ -140,7 +200,7 @@ function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
     if (!selected) return;
     if (!window.confirm(`Delete ${selected}? This cannot be undone.`)) return;
     try {
-      await api(`/api/backup/file?scope=${scope}&filename=${encodeURIComponent(selected)}`, {
+      await api(`/api/backup/file?scope=${scope}&target=${target}&filename=${encodeURIComponent(selected)}`, {
         method: "DELETE",
       });
       toast({ title: "Backup deleted", description: selected });
@@ -162,6 +222,11 @@ function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label>Restore source</Label>
+          <TargetSelect targets={targets} value={target} onChange={setTarget} />
+        </div>
+
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <Label>Available backups ({files.length})</Label>
@@ -212,6 +277,9 @@ function RestoreCard({ scope, label }: { scope: Scope; label: string }) {
 }
 
 export default function DatabaseBackup() {
+  const { targets } = useTargets();
+  const usbCount = targets.filter((t) => t.key !== "local" && t.available).length;
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -219,7 +287,11 @@ export default function DatabaseBackup() {
         <div>
           <h1 className="text-2xl font-bold">Database Backup</h1>
           <p className="text-sm text-muted-foreground">
-            Create or restore PostgreSQL backups for the Landco accounting, Cash Control, or the complete database.
+            Create or restore PostgreSQL backups for Landco accounting, Cash Control, or the complete database — to local storage or a connected USB drive.
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            <HardDrive className="inline h-3 w-3 mr-1" />
+            {usbCount === 0 ? "No USB drive detected." : `${usbCount} USB drive(s) connected.`}
           </p>
         </div>
       </div>
@@ -227,8 +299,8 @@ export default function DatabaseBackup() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {SCOPES.map((s) => (
           <div key={s.key} className="contents">
-            <BackupCard scope={s.key} label={s.label} description={s.description} />
-            <RestoreCard scope={s.key} label={s.label} />
+            <BackupCard scope={s.key} label={s.label} description={s.description} targets={targets} />
+            <RestoreCard scope={s.key} label={s.label} targets={targets} />
           </div>
         ))}
       </div>
