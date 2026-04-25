@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api, getApiBase } from "@/lib/api";
 import { Database, Download, Upload, RefreshCw, Trash2, HardDrive } from "lucide-react";
 
 type Scope = "landco" | "cash" | "complete";
