@@ -151,8 +151,11 @@ function RestoreCard({
       const r = await api<BackupFile[]>(`/api/backup/list?scope=${scope}&target=${target}`);
       setFiles(r);
       if (!r.find((f) => f.filename === selected)) setSelected("");
-    } catch (e: any) {
-      toast({ title: "Could not list backups", description: e.message, variant: "destructive" });
+    } catch {
+      // Silent: empty folder, USB unplugged, or API unreachable.
+      // The card already shows "Available backups (0)" which is enough signal.
+      setFiles([]);
+      setSelected("");
     }
   }
 
