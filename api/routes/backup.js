@@ -196,6 +196,16 @@ export default function backupRoutes(requireAuth) {
 
     try {
       await runCmd("pg_dump", args, { stdoutFile: filepath });
+      // Strip Postgres 17-only GUCs so the dump can be restored on Postgres 15/16.
+      // pg_dump v17 emits `SET transaction_timeout = 0;` which older servers reject.
+      try {
+        const raw = fs.readFileSync(filepath, "utf8");
+        const cleaned = raw
+          .split("\n")
+          .filter((l) => !/^SET\s+transaction_timeout\b/i.test(l.trim()))
+          .join("\n");
+        if (cleaned !== raw) fs.writeFileSync(filepath, cleaned);
+      } catch { /* best-effort sanitisation */ }
       const stat = fs.statSync(filepath);
       res.json({ ok: true, filename, size: stat.size, target });
     } catch (e) {
@@ -220,7 +230,24 @@ export default function backupRoutes(requireAuth) {
     if (!fs.existsSync(filepath)) return res.status(404).json({ error: "backup not found" });
 
     try {
-      await runCmd("psql", ["-v", "ON_ERROR_STOP=1", "-1"], { stdinFile: filepath });
+      // Sanitise: strip Postgres 17-only GUCs (e.g. transaction_timeout) so older
+      // servers can restore dumps produced by a newer pg_dump. We write a cleaned
+      // copy to /tmp and feed that to psql; the original .sql file is untouched.
+      let sourceFile = filepath;
+      try {
+        const raw = fs.readFileSync(filepath, "utf8");
+        const cleaned = raw
+          .split("\n")
+          .filter((l) => !/^SET\s+transaction_timeout\b/i.test(l.trim()))
+          .join("\n");
+        if (cleaned !== raw) {
+          sourceFile = `/tmp/restore_${Date.now()}.sql`;
+          fs.writeFileSync(sourceFile, cleaned);
+        }
+      } catch { /* fall back to original file */ }
+
+      await runCmd("psql", ["-v", "ON_ERROR_STOP=1", "-1"], { stdinFile: sourceFile });
+      if (sourceFile !== filepath) { try { fs.unlinkSync(sourceFile); } catch {} }
       res.json({ ok: true, restored: filename, target });
     } catch (e) {
       res.status(500).json({ error: e.message });
