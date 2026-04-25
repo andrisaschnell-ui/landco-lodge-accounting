@@ -9,6 +9,7 @@ const getApiUrl = () => {
   return `http://${host}:4000`;
 };
 const API = getApiUrl();
+export const getApiBase = () => API;
 
 function token() { return localStorage.getItem("lanacc_token") || ""; }
 
