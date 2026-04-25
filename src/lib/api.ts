@@ -3,6 +3,8 @@
 // the on-premise Docker stack.
 
 const getApiUrl = () => {
+  const configured = import.meta.env.VITE_API_URL;
+  if (configured) return configured;
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
   return `http://${host}:4000`;
 };
@@ -26,6 +28,13 @@ export async function login(email: string, password: string) {
 export function logout() {
   localStorage.removeItem("lanacc_token");
   localStorage.removeItem("lanacc_user");
+}
+
+export function getLocalUser() {
+  const raw = localStorage.getItem("lanacc_user");
+  if (!raw) return null;
+  try { return JSON.parse(raw); }
+  catch { return null; }
 }
 
 export async function api<T = any>(path: string, init: RequestInit = {}): Promise<T> {
