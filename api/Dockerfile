@@ -1,6 +1,6 @@
 FROM node:20-alpine
 # Install postgresql-client so pg_dump / psql are available for backup/restore
-RUN apk add --no-cache postgresql15-client
+RUN apk add --no-cache postgresql-client
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
