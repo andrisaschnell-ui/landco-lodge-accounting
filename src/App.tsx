@@ -26,6 +26,7 @@ import SuspenseReview from "./pages/SuspenseReview";
 import CashControl from "./pages/CashControl";
 import CashControlDisplay from "./pages/CashControlDisplay";
 import CashControlReports from "./pages/CashControlReports";
+import DatabaseBackup from "./pages/DatabaseBackup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -94,6 +95,7 @@ const App = () => (
                 <Route path="/cash-control/display" element={<CashControlDisplay />} />
                 <Route path="/cash-control/display/:type" element={<CashControlDisplay />} />
                 <Route path="/cash-control/reports" element={<CashControlReports />} />
+                <Route path="/database-backup" element={<DatabaseBackup />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
