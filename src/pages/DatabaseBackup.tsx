@@ -286,22 +286,49 @@ function RestoreCard({
 
 export default function DatabaseBackup() {
   const { targets } = useTargets();
+  const { toast } = useToast();
+  const [repairing, setRepairing] = useState(false);
   const usbCount = targets.filter((t) => t.key !== "local" && t.available).length;
+
+  const repairUsers = async () => {
+    if (!confirm("Recreate the two admin users (cwschnell@gmail.com / andrisa.schnell@gmail.com) with their default passwords and grant admin role?")) return;
+    setRepairing(true);
+    try {
+      const base = getApiBase();
+      const r = await fetch(`${base}/auth/repair-users`, { method: "POST" });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "repair failed");
+      toast({
+        title: "Admin users repaired",
+        description: `Restored ${data.repaired.length} accounts. You can now log in with the default passwords.`,
+      });
+    } catch (e: any) {
+      toast({ title: "Repair failed", description: e.message, variant: "destructive" });
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Database className="h-7 w-7 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">Database Backup</h1>
-          <p className="text-sm text-muted-foreground">
-            Create or restore PostgreSQL backups for Landco accounting, Cash Control, or the complete database — to local storage or a connected USB drive.
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            <HardDrive className="inline h-3 w-3 mr-1" />
-            {usbCount === 0 ? "No USB drive detected." : `${usbCount} USB drive(s) connected.`}
-          </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Database className="h-7 w-7 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Database Backup</h1>
+            <p className="text-sm text-muted-foreground">
+              Create or restore PostgreSQL backups for Landco accounting, Cash Control, or the complete database — to local storage or a connected USB drive.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              <HardDrive className="inline h-3 w-3 mr-1" />
+              {usbCount === 0 ? "No USB drive detected." : `${usbCount} USB drive(s) connected.`}
+            </p>
+          </div>
         </div>
+        <Button variant="outline" onClick={repairUsers} disabled={repairing} title="Recreate the two admin users with default passwords">
+          <RefreshCw className={`h-4 w-4 mr-2 ${repairing ? "animate-spin" : ""}`} />
+          {repairing ? "Repairing…" : "Repair Users"}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
