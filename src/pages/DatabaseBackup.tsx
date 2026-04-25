@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/lib/api";
+import { api, getApiBase } from "@/lib/api";
 import { Database, Download, Upload, RefreshCw, Trash2, HardDrive } from "lucide-react";
 
 type Scope = "landco" | "cash" | "complete";
@@ -151,8 +151,11 @@ function RestoreCard({
       const r = await api<BackupFile[]>(`/api/backup/list?scope=${scope}&target=${target}`);
       setFiles(r);
       if (!r.find((f) => f.filename === selected)) setSelected("");
-    } catch (e: any) {
-      toast({ title: "Could not list backups", description: e.message, variant: "destructive" });
+    } catch {
+      // Silent: empty folder, USB unplugged, or API unreachable.
+      // The card already shows "Available backups (0)" which is enough signal.
+      setFiles([]);
+      setSelected("");
     }
   }
 
@@ -181,19 +184,24 @@ function RestoreCard({
     }
   }
 
-  function download() {
+  async function download() {
     if (!selected) return;
-    const url = `${window.location.protocol}//${window.location.hostname}:4000/api/backup/download?scope=${scope}&target=${target}&filename=${encodeURIComponent(selected)}`;
-    const token = localStorage.getItem("lanacc_token") || "";
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.blob())
-      .then((blob) => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = selected;
-        a.click();
-        URL.revokeObjectURL(a.href);
-      });
+    const url = `${getApiBase()}/api/backup/download?scope=${scope}&target=${target}&filename=${encodeURIComponent(selected)}`;
+    const tk = localStorage.getItem("lanacc_token") || "";
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${tk}` } });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = selected;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e.message, variant: "destructive" });
+    }
   }
 
   async function remove() {
