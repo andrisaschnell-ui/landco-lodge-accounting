@@ -284,10 +284,23 @@ function RestoreCard({
   );
 }
 
+interface DiagResponse {
+  connection: {
+    DATABASE_URL_host: string | null;
+    db: string; user: string; server_host: string; server_port: string;
+    pg_version: string;
+  };
+  tableCount: number;
+  totalRows: number;
+  tables: { table: string; rows: number }[];
+}
+
 export default function DatabaseBackup() {
   const { targets } = useTargets();
   const { toast } = useToast();
   const [repairing, setRepairing] = useState(false);
+  const [diag, setDiag] = useState<DiagResponse | null>(null);
+  const [diagBusy, setDiagBusy] = useState(false);
   const usbCount = targets.filter((t) => t.key !== "local" && t.available).length;
 
   const repairUsers = async () => {
@@ -309,6 +322,22 @@ export default function DatabaseBackup() {
     }
   };
 
+  const runDiag = async () => {
+    setDiagBusy(true);
+    try {
+      const r = await api<DiagResponse>(`/api/backup/diag`);
+      setDiag(r);
+      toast({
+        title: "Diagnostics complete",
+        description: `${r.tableCount} tables, ${r.totalRows.toLocaleString()} rows in ${r.connection.db}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Diagnostics failed", description: e.message, variant: "destructive" });
+    } finally {
+      setDiagBusy(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-start justify-between gap-3">
@@ -325,11 +354,53 @@ export default function DatabaseBackup() {
             </p>
           </div>
         </div>
-        <Button variant="outline" onClick={repairUsers} disabled={repairing} title="Recreate the two admin users with default passwords">
-          <RefreshCw className={`h-4 w-4 mr-2 ${repairing ? "animate-spin" : ""}`} />
-          {repairing ? "Repairing…" : "Repair Users"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={runDiag} disabled={diagBusy} title="Show what database and tables the backup API can see">
+            <RefreshCw className={`h-4 w-4 mr-2 ${diagBusy ? "animate-spin" : ""}`} />
+            {diagBusy ? "Checking…" : "Run Diagnostics"}
+          </Button>
+          <Button variant="outline" onClick={repairUsers} disabled={repairing} title="Recreate the two admin users with default passwords">
+            <RefreshCw className={`h-4 w-4 mr-2 ${repairing ? "animate-spin" : ""}`} />
+            {repairing ? "Repairing…" : "Repair Users"}
+          </Button>
+        </div>
       </div>
+
+      {diag && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Backup API Diagnostics</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div><b>DATABASE_URL host:</b> {diag.connection.DATABASE_URL_host || "—"}</div>
+              <div><b>Connected DB:</b> {diag.connection.db}</div>
+              <div><b>Server host:</b> {diag.connection.server_host || "(socket)"}</div>
+              <div><b>Server port:</b> {diag.connection.server_port}</div>
+              <div className="col-span-2"><b>Version:</b> <span className="text-xs">{diag.connection.pg_version}</span></div>
+              <div><b>Tables:</b> {diag.tableCount}</div>
+              <div><b>Total rows:</b> {diag.totalRows.toLocaleString()}</div>
+            </div>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs text-muted-foreground">Per-table row counts</summary>
+              <div className="mt-2 max-h-64 overflow-auto border rounded p-2 text-xs font-mono">
+                {diag.tables.map((t) => (
+                  <div key={t.table} className={t.rows === 0 ? "text-muted-foreground" : ""}>
+                    {t.table.padEnd(30, ".")} {t.rows.toLocaleString()}
+                  </div>
+                ))}
+              </div>
+            </details>
+            {diag.totalRows === 0 && (
+              <p className="text-xs text-destructive">
+                ⚠️ The API sees 0 rows. Your backups will be empty. The API container is connected
+                to a different / empty database than your app uses. Check <code>DATABASE_URL</code>
+                in <code>docker-compose.yml</code>.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {SCOPES.map((s) => (
