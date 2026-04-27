@@ -1,0 +1,27 @@
+# LAN access + cloud sync overrides.
+#
+# This file is loaded automatically by `docker compose` on top of
+# docker-compose.yml. Adjust as needed per machine; do NOT commit
+# real secrets here.
+
+services:
+  web:
+    # Bake the API URL using the host machine's LAN IP so other PCs on the
+    # same Wi-Fi can reach the API. Replace 192.168.1.10 with the host IP
+    # (e.g. on Windows: `ipconfig` → IPv4 of the active adapter).
+    # Leave commented out to fall back to auto-detect from browser hostname.
+    # environment:
+    #   - VITE_API_URL=http://192.168.1.10:4000
+    ports:
+      - "8080:8080"
+
+  api:
+    environment:
+      # REQUIRED for "Push Local → Cloud" sync. Paste your Supabase service-role
+      # key here, or set it via shell env before `docker compose up`.
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_URL=https://yllodlsdldtttkftalwc.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsbG9kbHNkbGR0dHRrZnRhbHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NDA3NzIsImV4cCI6MjA5MTUxNjc3Mn0._LVfaD5cRTOVeJEgnWGmaBME9GvmdzSN8_5eh1W63qA
+    # Bind on 0.0.0.0 (default) so other LAN computers can reach :4000.
+    ports:
+      - "0.0.0.0:4000:4000"
