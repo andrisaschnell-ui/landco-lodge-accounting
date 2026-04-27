@@ -7,6 +7,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { ModeToggle } from "@/components/ModeToggle";
+import { isLocalMode } from "@/lib/dbMode";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -29,8 +31,10 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) console.warn("Cloud auth login skipped:", error.message);
+      if (!isLocalMode()) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) console.warn("Cloud auth login skipped:", error.message);
+      }
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
@@ -45,6 +49,9 @@ export default function Auth() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">LANACC</CardTitle>
           <CardDescription>Landco Lda — Accounting Management</CardDescription>
+          <div className="flex justify-center pt-2">
+            <ModeToggle variant="pill" />
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
