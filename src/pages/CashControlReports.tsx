@@ -25,8 +25,8 @@ export default function CashControlReports() {
       const { data: f } = await supabase.from("cash_transactions").select("funder").not("funder", "is", null);
       const { data: r } = await supabase.from("cash_transactions").select("receiver").not("receiver", "is", null);
       setOptions({
-        funders: Array.from(new Set((f ?? []).map((x) => x.funder).filter((v): v is string => !!v))).sort(),
-        receivers: Array.from(new Set((r ?? []).map((x) => x.receiver).filter((v): v is string => !!v))).sort(),
+        funders: Array.from(new Set((f ?? []).map((x: any) => x.funder as string).filter((v): v is string => !!v))).sort(),
+        receivers: Array.from(new Set((r ?? []).map((x: any) => x.receiver as string).filter((v): v is string => !!v))).sort(),
       });
     })();
   }, []);
