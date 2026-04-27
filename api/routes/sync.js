@@ -1,0 +1,111 @@
+// Manual two-way sync between local PostgreSQL (this container) and the cloud
+// Supabase project (PostgREST). All business tables. Conflict policy: Local wins.
+//
+// Endpoints:
+//   POST /api/sync/push   Local → Cloud
+//   POST /api/sync/pull   Cloud → Local
+//
+// Cloud credentials come from env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+// If SUPABASE_SERVICE_ROLE_KEY is missing, push is disabled (anon key cannot
+// write past RLS) and pull falls back to the anon key.
+
+import express from "express";
+
+const TABLES = [
+  "properties","shareholders","bank_accounts","expense_categories",
+  "employees","exchange_rates","income_transactions","expense_transactions",
+  "bank_transactions","petty_cash_transactions","salary_runs","salary_lines",
+  "salary_advances","bim_salary_transfers","inss_payments","irps_payments",
+  "shareholder_balances","import_log","profiles","user_roles",
+  "accounts","accounting_periods",
+  "cash_sheets","cash_transactions","cash_dropdown_options","cash_allocation_columns",
+];
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://yllodlsdldtttkftalwc.supabase.co";
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const ANON_KEY     = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+
+async function fetchCloudTable(table, key) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Accept-Profile": "public" },
+  });
+  if (!r.ok) throw new Error(`cloud GET ${table}: ${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+async function pushCloudTable(table, rows) {
+  if (!rows.length) return 0;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!r.ok) throw new Error(`cloud POST ${table}: ${r.status} ${await r.text()}`);
+  return rows.length;
+}
+
+export default function syncRoutes(pool, requireAuth) {
+  const router = express.Router();
+
+  // Local → Cloud (Local wins via merge-duplicates upsert)
+  router.post("/push", requireAuth, async (req, res) => {
+    if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+    if (!SERVICE_KEY) return res.status(400).json({ error: "SUPABASE_SERVICE_ROLE_KEY not configured on API container" });
+
+    let totalRows = 0, ok = 0;
+    const errors = [];
+    for (const t of TABLES) {
+      try {
+        const { rows } = await pool.query(`SELECT * FROM public.${t}`);
+        totalRows += await pushCloudTable(t, rows);
+        ok++;
+      } catch (e) { errors.push({ table: t, error: e.message }); }
+    }
+    res.json({ ok: errors.length === 0, tables: ok, rows: totalRows, errors });
+  });
+
+  // Cloud → Local (upsert with replica triggers off so FK order doesn't matter)
+  router.post("/pull", requireAuth, async (req, res) => {
+    if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+    const key = SERVICE_KEY || ANON_KEY;
+    if (!key) return res.status(400).json({ error: "no Supabase key available" });
+
+    const client = await pool.connect();
+    let totalRows = 0, ok = 0;
+    const errors = [];
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL session_replication_role = 'replica'");
+      for (const t of TABLES) {
+        try {
+          const cloudRows = await fetchCloudTable(t, key);
+          for (const row of cloudRows) {
+            const cols = Object.keys(row);
+            if (!cols.length) continue;
+            const params = cols.map((_, i) => `$${i + 1}`);
+            const updates = cols.filter((c) => c !== "id").map((c) => `${c}=EXCLUDED.${c}`);
+            const sql = `INSERT INTO public.${t} (${cols.join(",")}) VALUES (${params.join(",")})
+                         ON CONFLICT (id) DO UPDATE SET ${updates.join(",") || "id=EXCLUDED.id"}`;
+            await client.query(sql, cols.map((c) => row[c]));
+            totalRows++;
+          }
+          ok++;
+        } catch (e) { errors.push({ table: t, error: e.message }); }
+      }
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      return res.status(500).json({ error: e.message });
+    } finally {
+      client.release();
+    }
+    res.json({ ok: errors.length === 0, tables: ok, rows: totalRows, errors });
+  });
+
+  return router;
+}
