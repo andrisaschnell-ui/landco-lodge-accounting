@@ -1,5 +1,10 @@
 version: '3.8'
 
+# All secrets in this file come from .env.local at the project root.
+# Always start the stack with:
+#     docker compose --env-file .env.local up -d --build
+# scripts\start.bat does this for you and aborts if .env.local is missing.
+
 services:
   web:
     build:
@@ -13,7 +18,7 @@ services:
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
-      - VITE_API_URL=http://localhost:4000
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:4000}
     depends_on:
       - api
     networks:
@@ -25,32 +30,27 @@ services:
       dockerfile: Dockerfile
     container_name: lanacc-api
     ports:
-      - "4000:4000"
+      - "0.0.0.0:4000:4000"
     volumes:
       - ./api:/app
       - ./scripts:/app/scripts
       - ./db/backups:/app/backups
-      # USB drive mounts (Windows host). Docker REQUIRES the drive to exist at
-      # build/start time — it will NOT silently skip missing drives. Uncomment
-      # only the lines for drives that are currently plugged in. You can also
-      # add/remove lines later and run `docker compose up -d` to re-apply.
+      # USB drive mounts (Windows host). Uncomment only drives currently plugged in.
       # - E:/:/mnt/usb_e
       # - F:/:/mnt/usb_f
       # - G:/:/mnt/usb_g
       # - H:/:/mnt/usb_h
       - /app/node_modules
     environment:
-      - DATABASE_URL=postgres://postgres:root@db:5432/landco_v2_db
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing - did you start with --env-file .env.local?}@db:5432/landco_v2_db
       - BACKUP_DIR=/app/backups
-      - JWT_SECRET=landco-secret-key-2026
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET missing in .env.local}
       - COMPANY_NAME=Landco Lodge Lda
       - COMPANY_NUIT=123456789
       - COMPANY_ADDRESS=Vilankulo, Mozambique
-      - AT_SIGNING_KEY=default-secret-key-2026
+      - AT_SIGNING_KEY=${AT_SIGNING_KEY:?AT_SIGNING_KEY missing in .env.local}
       - SUPABASE_URL=https://yllodlsdldtttkftalwc.supabase.co
       - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsbG9kbHNkbGR0dHRrZnRhbHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NDA3NzIsImV4cCI6MjA5MTUxNjc3Mn0._LVfaD5cRTOVeJEgnWGmaBME9GvmdzSN8_5eh1W63qA
-      # Read from shell env or .env.local at project root (auto-loaded by Docker Compose).
-      # Required for sync Pull/Push. Get the key from Lovable -> Cloud -> Backend -> API keys.
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
     depends_on:
       - db
@@ -63,7 +63,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing in .env.local}
       POSTGRES_DB: landco_v2_db
     ports:
       - "5432:5432"
@@ -78,7 +78,7 @@ services:
     container_name: lanacc-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@landco.com
-      PGADMIN_DEFAULT_PASSWORD: root
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-changeme}
     ports:
       - "5050:80"
     depends_on:
