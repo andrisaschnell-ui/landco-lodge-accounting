@@ -69,11 +69,29 @@ export default function syncRoutes(pool, requireAuth) {
     res.json({ ok: errors.length === 0, tables: ok, rows: totalRows, errors });
   });
 
+  // Diagnostic: confirm which key (if any) the API container has loaded.
+  // Safe to call without auth — returns booleans only, never the keys themselves.
+  router.get("/status", (_req, res) => {
+    res.json({
+      supabase_url: SUPABASE_URL,
+      service_role_key_loaded: !!SERVICE_KEY,
+      anon_key_loaded: !!ANON_KEY,
+      push_enabled: !!SERVICE_KEY,
+      pull_will_use: SERVICE_KEY ? "service_role" : (ANON_KEY ? "anon (RLS-restricted, likely 0 rows)" : "none"),
+    });
+  });
+
   // Cloud → Local (upsert with replica triggers off so FK order doesn't matter)
   router.post("/pull", requireAuth, async (req, res) => {
     if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
-    const key = SERVICE_KEY || ANON_KEY;
-    if (!key) return res.status(400).json({ error: "no Supabase key available" });
+    if (!SERVICE_KEY) {
+      return res.status(400).json({
+        error: "SUPABASE_SERVICE_ROLE_KEY not loaded in API container. " +
+               "Pull would hit cloud RLS and return 0 rows. " +
+               "Add the key to .env.local and run: docker compose --env-file .env.local up -d --force-recreate api",
+      });
+    }
+    const key = SERVICE_KEY;
 
     const client = await pool.connect();
     let totalRows = 0, ok = 0;

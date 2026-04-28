@@ -47,6 +47,11 @@ services:
       - COMPANY_NUIT=123456789
       - COMPANY_ADDRESS=Vilankulo, Mozambique
       - AT_SIGNING_KEY=default-secret-key-2026
+      - SUPABASE_URL=https://yllodlsdldtttkftalwc.supabase.co
+      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsbG9kbHNkbGR0dHRrZnRhbHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NDA3NzIsImV4cCI6MjA5MTUxNjc3Mn0._LVfaD5cRTOVeJEgnWGmaBME9GvmdzSN8_5eh1W63qA
+      # Read from shell env or .env.local at project root (auto-loaded by Docker Compose).
+      # Required for sync Pull/Push. Get the key from Lovable -> Cloud -> Backend -> API keys.
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
     depends_on:
       - db
     networks:
