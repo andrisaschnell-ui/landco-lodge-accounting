@@ -12,6 +12,17 @@ You should see:
 ```json
 {
   "service_role_key_loaded": true,
+  ...
+}
+```
+
+If you instead see **`Cannot GET /api/sync/status`**, your API container
+is running an **old image** that predates this endpoint. Re-run the fix
+script below — it now passes `--build` to force a rebuild — or run manually:
+`docker compose --env-file .env.local up -d --build --force-recreate api`
+```json
+{
+  "service_role_key_loaded": true,
   "push_enabled": true,
   "pull_will_use": "service_role"
 }

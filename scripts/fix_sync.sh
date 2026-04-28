@@ -26,8 +26,8 @@ EOF
 echo "Wrote .env.local"
 
 echo
-echo "--- Recreating API container so it picks up the new key ---"
-docker compose --env-file .env.local up -d --force-recreate api
+echo "--- Rebuilding + recreating API container (picks up latest sync.js AND the new key) ---"
+docker compose --env-file .env.local up -d --build --force-recreate api
 
 echo
 echo "--- Waiting for API to come up ---"
