@@ -53,6 +53,18 @@ git checkout v5
 git pull origin v5
 ```
 
+> **One-time `.gitignore` patch** (the Lovable editor cannot modify
+> `.gitignore` directly). Open `.gitignore` in the repo root and append
+> these lines if missing, then commit them once:
+> ```
+> .env.local
+> .env.*.local
+> db/backups/*.sql
+> db/backups/landco/
+> db/backups/cash/
+> db/backups/complete/
+> ```
+
 ---
 
 ## 4. Create `.env.local` (secrets, never committed)
