@@ -234,4 +234,15 @@ app.patch("/api/:table", requireAuth, async (req, res) => {
 app.get("/health", (_, res) => res.json({ ok: true }));
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => console.log(`LANACC API listening on :${port}`));
+app.listen(port, () => {
+  const banner = [
+    "============================================================",
+    `  LANACC API listening on :${port}`,
+    `  JWT_SECRET loaded               : ${process.env.JWT_SECRET ? "yes" : "NO (using dev fallback!)"}`,
+    `  AT_SIGNING_KEY loaded           : ${process.env.AT_SIGNING_KEY ? "yes" : "NO"}`,
+    `  SUPABASE_URL                    : ${process.env.SUPABASE_URL || "(default)"}`,
+    `  SUPABASE_SERVICE_ROLE_KEY loaded: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? "yes (sync enabled)" : "NO (sync DISABLED)"}`,
+    "============================================================",
+  ].join("\n");
+  console.log(banner);
+});
