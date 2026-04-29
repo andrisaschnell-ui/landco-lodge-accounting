@@ -370,7 +370,7 @@ export default function UploadData() {
                   {state.preview}
                 </pre>
                 <div className="flex gap-3">
-                  <Button onClick={handleImport}>
+                  <Button onClick={() => handleImport(false)}>
                     Import {state.recordCount} Records
                   </Button>
                   <Button variant="outline" onClick={reset}>Cancel</Button>
