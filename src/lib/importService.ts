@@ -42,8 +42,43 @@ async function getBankAccountMap(): Promise<Map<string, string>> {
   return map;
 }
 
-export async function importSalary(result: ParsedSalaryResult, filename: string) {
+export class DuplicateMonthError extends Error {
+  code = "DUPLICATE_MONTH" as const;
+  existingRunId: string;
+  month: number;
+  year: number;
+  constructor(existingRunId: string, month: number, year: number) {
+    super(`A payroll run already exists for ${month}/${year}.`);
+    this.existingRunId = existingRunId;
+    this.month = month;
+    this.year = year;
+  }
+}
+
+export async function deleteSalaryRun(runId: string) {
+  const { error: linesErr } = await supabase.from("salary_lines").delete().eq("salary_run_id", runId);
+  if (linesErr) throw linesErr;
+  const { error: runErr } = await supabase.from("salary_runs").delete().eq("id", runId);
+  if (runErr) throw runErr;
+}
+
+export async function importSalary(result: ParsedSalaryResult, filename: string, opts: { replaceExisting?: boolean } = {}) {
   const empMap = await getEmployeeMap();
+
+  // Duplicate check
+  const { data: existing } = await supabase
+    .from("salary_runs")
+    .select("id")
+    .eq("month", result.month)
+    .eq("year", result.year)
+    .maybeSingle();
+
+  if (existing) {
+    if (!opts.replaceExisting) {
+      throw new DuplicateMonthError(existing.id, result.month, result.year);
+    }
+    await deleteSalaryRun(existing.id);
+  }
 
   // Create salary run
   const { data: run, error: runErr } = await supabase
