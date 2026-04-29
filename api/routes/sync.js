@@ -21,7 +21,7 @@ const TABLES = [
   "cash_sheets","cash_transactions","cash_dropdown_options","cash_allocation_columns",
 ];
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://yllodlsdldtttkftalwc.supabase.co";
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://neakxehuonsrlvjrxhnd.supabase.co";
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const ANON_KEY     = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 
