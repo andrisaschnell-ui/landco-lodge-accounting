@@ -21,8 +21,9 @@ import type { Database } from "./types";
 import { getDbMode } from "@/lib/dbMode";
 import { getApiBase } from "@/lib/api";
 
-const SUPABASE_URL = "https://yllodlsdldtttkftalwc.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsbG9kbHNkbGR0dHRrZnRhbHdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NDA3NzIsImV4cCI6MjA5MTUxNjc3Mn0._LVfaD5cRTOVeJEgnWGmaBME9GvmdzSN8_5eh1W63qA";
+// Migrated 2026-04-29 from project yllodlsdldtttkftalwc → neakxehuonsrlvjrxhnd
+const SUPABASE_URL = "https://neakxehuonsrlvjrxhnd.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYWt4ZWh1b25zcmx2anJ4aG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODcyMzUsImV4cCI6MjA5Mjk2MzIzNX0.m9cL7bDv5jRFjBqmzxOYLus36ptEoY-BVdY7ohncMhg";
 
 const cloudClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { storage: localStorage, persistSession: true, autoRefreshToken: true },

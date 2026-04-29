@@ -76,7 +76,7 @@ All routes confirmed in `src/App.tsx` (lines 53–62) inside `<Route element={<P
 The application currently connects to **Supabase Cloud**:
 
 ```
-VITE_SUPABASE_URL = https://yllodlsdldtttkftalwc.supabase.co
+VITE_SUPABASE_URL = https://neakxehuonsrlvjrxhnd.supabase.co
 ```
 
 This means:

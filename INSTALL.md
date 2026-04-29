@@ -31,7 +31,7 @@ moves data between them (Local wins on conflict).
 3. **Git for Windows**.
 4. **Lexar USB drive** plugged in as **`E:\`** with folder
    `E:\landco_daily_backup` (already created).
-5. The **Supabase service-role key** for project `yllodlsdldtttkftalwc`
+5. The **Supabase service-role key** for project `neakxehuonsrlvjrxhnd`
    (Lovable → Cloud → Backend → API keys → `service_role`).
 
 ---
@@ -110,7 +110,7 @@ This:
 You should see:
 
 ```
-{"supabase_url":"https://yllodlsdldtttkftalwc.supabase.co",
+{"supabase_url":"https://neakxehuonsrlvjrxhnd.supabase.co",
  "service_role_key_loaded":true,
  "push_enabled":true, ...}
 ```

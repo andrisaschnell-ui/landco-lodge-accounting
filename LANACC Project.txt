@@ -37,15 +37,15 @@ Known Issues to Fix
 1. supabase_vector container keeps restarting
 This is the logging/analytics service. It's not critical for the app but should be investigated. It's a known issue with the local Supabase stack on Windows. Can be ignored for now or stopped cleanly with:
 powershell
-docker stop supabase_vector_yllodlsdldtttkftalwc
+docker stop supabase_vector_neakxehuonsrlvjrxhnd
 2. Expense categories may be empty
 Run this to check:
 powershell
-docker exec -i supabase_db_yllodlsdldtttkftalwc psql -U postgres -d postgres -c "SELECT COUNT(*) FROM public.expense_categories;"
+docker exec -i supabase_db_neakxehuonsrlvjrxhnd psql -U postgres -d postgres -c "SELECT COUNT(*) FROM public.expense_categories;"
 If zero, the 20 categories need to be seeded before expense imports will work.
 3. Bank accounts may be empty
 powershell
-docker exec -i supabase_db_yllodlsdldtttkftalwc psql -U postgres -d postgres -c "SELECT COUNT(*) FROM public.bank_accounts;"
+docker exec -i supabase_db_neakxehuonsrlvjrxhnd psql -U postgres -d postgres -c "SELECT COUNT(*) FROM public.bank_accounts;"
 If zero, seed with BDO MZN, BDO USD, BIM MZN before bank imports.
 
 Plan Forward
@@ -98,7 +98,7 @@ docker compose up -d --build
 docker logs landco_lovable_frontend
 
 # Access database directly
-docker exec -i supabase_db_yllodlsdldtttkftalwc psql -U postgres -d postgres
+docker exec -i supabase_db_neakxehuonsrlvjrxhnd psql -U postgres -d postgres
 
 Instructions for Next Agent
 Tell the next agent:
