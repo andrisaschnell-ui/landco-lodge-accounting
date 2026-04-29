@@ -23,8 +23,19 @@ import {
   importPettyCash,
   importExpenses,
   importInvoices,
+  DuplicateMonthError,
 } from "@/lib/importService";
 import { importCashControl } from "@/lib/cashControlImport";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
@@ -60,6 +71,7 @@ export default function UploadData() {
   const [state, setState] = useState<UploadState>({
     file: null, status: "idle", preview: "", recordCount: 0, error: "",
   });
+  const [dupDialog, setDupDialog] = useState<{ month: number; year: number } | null>(null);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -189,7 +201,7 @@ export default function UploadData() {
     }
   }, [fileType, month, year]);
 
-  const handleImport = useCallback(async () => {
+  const handleImport = useCallback(async (replaceExisting = false) => {
     if (!state.file) return;
     setState((s) => ({ ...s, status: "importing" }));
 
@@ -201,7 +213,7 @@ export default function UploadData() {
 
       switch (fileType) {
         case "salary": {
-          const result = await importSalary(parseSalarySheet(buffer, m, y), state.file.name);
+          const result = await importSalary(parseSalarySheet(buffer, m, y), state.file.name, { replaceExisting });
           imported = result.imported;
           if (result.unmatched.length > 0) {
             toast({
@@ -242,6 +254,11 @@ export default function UploadData() {
       setState((s) => ({ ...s, status: "success", recordCount: imported }));
       toast({ title: "Import complete", description: `${imported} records imported successfully.` });
     } catch (err) {
+      if (err instanceof DuplicateMonthError) {
+        setState((s) => ({ ...s, status: "parsed" }));
+        setDupDialog({ month: err.month, year: err.year });
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Import failed";
       setState((s) => ({ ...s, status: "error", error: msg }));
       toast({ title: "Import failed", description: msg, variant: "destructive" });
@@ -353,7 +370,7 @@ export default function UploadData() {
                   {state.preview}
                 </pre>
                 <div className="flex gap-3">
-                  <Button onClick={handleImport}>
+                  <Button onClick={() => handleImport(false)}>
                     Import {state.recordCount} Records
                   </Button>
                   <Button variant="outline" onClick={reset}>Cancel</Button>
@@ -391,6 +408,27 @@ export default function UploadData() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!dupDialog} onOpenChange={(o) => { if (!o) setDupDialog(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Payroll for {dupDialog ? `${MONTHS[dupDialog.month - 1]} ${dupDialog.year}` : ""} already exists</AlertDialogTitle>
+            <AlertDialogDescription>
+              A payroll run for this month already exists. Do you want to replace it?
+              The existing month — header panel and all rows — will be permanently deleted before importing the new file. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDupDialog(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setDupDialog(null); handleImport(true); }}
+            >
+              Replace existing month
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

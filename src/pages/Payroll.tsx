@@ -5,9 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, FileSpreadsheet, Plus, Trash, FileText, Filter, Save, FileUp, ZoomIn, ZoomOut, ArrowUp, ArrowDown } from "lucide-react";
+import { Download, FileSpreadsheet, Plus, Trash, FileText, Filter, Save, FileUp, ZoomIn, ZoomOut, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 function formatMZN(v: number) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(Number(v) || 0);
@@ -30,6 +38,11 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
   const [localLines, setLocalLines] = useState<any[]>([]);
   const [houseFilter, setHouseFilter] = useState("ALL");
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [dupMonth, setDupMonth] = useState<number>(((run.month % 12) + 1));
+  const [dupYear, setDupYear] = useState<number>(run.month === 12 ? run.year + 1 : run.year);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -115,12 +128,101 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
     setLocalLines(prev => prev.filter(l => l.tempId !== tempId));
   };
 
-  const deleteMonthData = async () => {
-    if (!confirm("Are you sure you want to delete all data for this month?")) return;
+  const deleteEntireMonth = async () => {
     setIsSaving(true);
-    await supabase.from("salary_lines").delete().eq("salary_run_id", run.id);
-    await queryClient.invalidateQueries({ queryKey: ["salary-lines"] });
+    try {
+      const { error: linesErr } = await supabase.from("salary_lines").delete().eq("salary_run_id", run.id);
+      if (linesErr) throw linesErr;
+      const { error: runErr } = await supabase.from("salary_runs").delete().eq("id", run.id);
+      if (runErr) throw runErr;
+      toast({ title: "Month deleted", description: `${MONTH_NAMES[run.month]} ${run.year} payroll removed.` });
+      await queryClient.invalidateQueries({ queryKey: ["salary-runs"] });
+      await queryClient.invalidateQueries({ queryKey: ["salary-lines"] });
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    }
     setIsSaving(false);
+    setShowDeleteDialog(false);
+  };
+
+  const duplicateMonth = async () => {
+    setIsDuplicating(true);
+    try {
+      // Refuse if target month already exists
+      const { data: existing } = await supabase
+        .from("salary_runs")
+        .select("id")
+        .eq("month", dupMonth)
+        .eq("year", dupYear)
+        .maybeSingle();
+      if (existing) {
+        throw new Error(`A payroll run for ${MONTH_NAMES[dupMonth]} ${dupYear} already exists. Delete it first.`);
+      }
+
+      // Create new run (clone totals as-is)
+      const { data: newRun, error: runErr } = await supabase
+        .from("salary_runs")
+        .insert({
+          month: dupMonth,
+          year: dupYear,
+          status: "draft",
+          total_gross: run.total_gross || 0,
+          total_net: run.total_net || 0,
+          total_irps: run.total_irps || 0,
+          total_inss_employee: run.total_inss_employee || 0,
+          total_inss_employer: run.total_inss_employer || 0,
+        })
+        .select("id")
+        .single();
+      if (runErr) throw runErr;
+
+      // Clone every line as-is, pointing at the new run
+      if (localLines.length > 0) {
+        const now = Date.now();
+        const cloned = localLines.map((l, idx) => ({
+          salary_run_id: newRun.id,
+          employee_id: l.employee_id,
+          base_salary: l.base_salary,
+          food_allowance: l.food_allowance,
+          back_payment: l.back_payment,
+          days_worked: l.days_worked,
+          monthly_salary: l.monthly_salary,
+          nightshift_hours: l.nightshift_hours,
+          guardas_25: l.guardas_25,
+          overtime_15x_hours: l.overtime_15x_hours,
+          overtime_15x_amount: l.overtime_15x_amount,
+          overtime_2x_hours: l.overtime_2x_hours,
+          overtime_2x_amount: l.overtime_2x_amount,
+          gratification: l.gratification,
+          holiday_days: l.holiday_days,
+          holiday_amount: l.holiday_amount,
+          gross_total: l.gross_total,
+          advance: l.advance,
+          irps: l.irps,
+          debt: l.debt,
+          inss_employee: l.inss_employee,
+          sind: l.sind,
+          total_deductions: l.total_deductions,
+          net_salary: l.net_salary,
+          nib: l.nib || l.employees?.nib || null,
+          category: l.category,
+          created_at: new Date(now + idx * 1000).toISOString(),
+        })).filter((l) => l.employee_id);
+
+        if (cloned.length > 0) {
+          const { error: insErr } = await supabase.from("salary_lines").insert(cloned);
+          if (insErr) throw insErr;
+        }
+      }
+
+      toast({ title: "Month duplicated", description: `Created ${MONTH_NAMES[dupMonth]} ${dupYear} from ${MONTH_NAMES[run.month]} ${run.year}.` });
+      await queryClient.invalidateQueries({ queryKey: ["salary-runs"] });
+      await queryClient.invalidateQueries({ queryKey: ["salary-lines"] });
+      setShowDuplicateDialog(false);
+    } catch (e: any) {
+      toast({ title: "Duplicate failed", description: e.message, variant: "destructive" });
+    }
+    setIsDuplicating(false);
   };
 
   const saveChanges = async () => {
@@ -353,6 +455,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
   }, {});
 
   return (
+    <>
     <Card className="shadow-xl mb-6 bg-white border border-slate-200">
       <CardHeader className="bg-slate-800 text-white p-4 lg:px-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -406,8 +509,12 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
               <Plus className="w-3 h-3 mr-1" /> Row
             </Button>
 
-            <Button size="sm" onClick={deleteMonthData} variant="destructive" className="h-8 text-xs whitespace-nowrap hidden sm:flex">
-              <Trash className="w-3 h-3 mr-1" /> Clear
+            <Button size="sm" onClick={() => setShowDuplicateDialog(true)} variant="secondary" className="h-8 text-xs whitespace-nowrap hidden sm:flex">
+              <Copy className="w-3 h-3 mr-1" /> Duplicate to…
+            </Button>
+
+            <Button size="sm" onClick={() => setShowDeleteDialog(true)} variant="destructive" className="h-8 text-xs whitespace-nowrap hidden sm:flex">
+              <Trash className="w-3 h-3 mr-1" /> Delete Month
             </Button>
 
             <Button size="sm" onClick={saveChanges} disabled={isSaving} className="bg-blue-600 hover:bg-blue-500 h-8 text-xs font-bold shadow-md whitespace-nowrap">
@@ -633,6 +740,70 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
         </div>
       </CardContent>
     </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {MONTH_NAMES[run.month]} {run.year} payroll?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the entire month — the black header panel and all rows
+              ({localLines.length} employee {localLines.length === 1 ? "line" : "lines"}). This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); deleteEntireMonth(); }}
+              disabled={isSaving}
+            >
+              {isSaving ? "Deleting…" : "Delete month"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate {MONTH_NAMES[run.month]} {run.year}</DialogTitle>
+            <DialogDescription>
+              Choose the target month. All {localLines.length} payroll lines will be cloned exactly as-is into the new month.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target month</label>
+              <Select value={String(dupMonth)} onValueChange={(v) => setDupMonth(parseInt(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTH_NAMES.slice(1).map((name, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target year</label>
+              <Select value={String(dupYear)} onValueChange={(v) => setDupYear(parseInt(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[run.year - 1, run.year, run.year + 1, run.year + 2].map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDuplicateDialog(false)} disabled={isDuplicating}>Cancel</Button>
+            <Button onClick={duplicateMonth} disabled={isDuplicating || (dupMonth === run.month && dupYear === run.year)}>
+              {isDuplicating ? "Duplicating…" : "Create duplicate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
