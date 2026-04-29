@@ -201,7 +201,7 @@ export default function UploadData() {
     }
   }, [fileType, month, year]);
 
-  const handleImport = useCallback(async () => {
+  const handleImport = useCallback(async (replaceExisting = false) => {
     if (!state.file) return;
     setState((s) => ({ ...s, status: "importing" }));
 
@@ -213,7 +213,7 @@ export default function UploadData() {
 
       switch (fileType) {
         case "salary": {
-          const result = await importSalary(parseSalarySheet(buffer, m, y), state.file.name);
+          const result = await importSalary(parseSalarySheet(buffer, m, y), state.file.name, { replaceExisting });
           imported = result.imported;
           if (result.unmatched.length > 0) {
             toast({
