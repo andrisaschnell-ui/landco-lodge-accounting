@@ -71,6 +71,7 @@ export default function UploadData() {
   const [state, setState] = useState<UploadState>({
     file: null, status: "idle", preview: "", recordCount: 0, error: "",
   });
+  const [dupDialog, setDupDialog] = useState<{ month: number; year: number } | null>(null);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
