@@ -508,8 +508,12 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
               <Plus className="w-3 h-3 mr-1" /> Row
             </Button>
 
-            <Button size="sm" onClick={deleteMonthData} variant="destructive" className="h-8 text-xs whitespace-nowrap hidden sm:flex">
-              <Trash className="w-3 h-3 mr-1" /> Clear
+            <Button size="sm" onClick={() => setShowDuplicateDialog(true)} variant="secondary" className="h-8 text-xs whitespace-nowrap hidden sm:flex">
+              <Copy className="w-3 h-3 mr-1" /> Duplicate to…
+            </Button>
+
+            <Button size="sm" onClick={() => setShowDeleteDialog(true)} variant="destructive" className="h-8 text-xs whitespace-nowrap hidden sm:flex">
+              <Trash className="w-3 h-3 mr-1" /> Delete Month
             </Button>
 
             <Button size="sm" onClick={saveChanges} disabled={isSaving} className="bg-blue-600 hover:bg-blue-500 h-8 text-xs font-bold shadow-md whitespace-nowrap">
