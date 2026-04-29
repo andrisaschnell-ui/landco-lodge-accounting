@@ -23,17 +23,22 @@ export default function Auth() {
     setLoading(true);
 
     if (isLogin) {
-      try {
-        await localLogin(email, password);
-        window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
-      } catch (localError: any) {
-        toast({ title: "Login failed", description: localError.message, variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-      if (!isLocalMode()) {
+      if (isLocalMode()) {
+        try {
+          await localLogin(email, password);
+          window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
+        } catch (localError: any) {
+          toast({ title: "Login failed", description: localError.message, variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+      } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) console.warn("Cloud auth login skipped:", error.message);
+        if (error) {
+          toast({ title: "Login failed", description: error.message, variant: "destructive" });
+          setLoading(false);
+          return;
+        }
       }
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
