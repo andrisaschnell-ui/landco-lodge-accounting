@@ -38,6 +38,11 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
   const [localLines, setLocalLines] = useState<any[]>([]);
   const [houseFilter, setHouseFilter] = useState("ALL");
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [dupMonth, setDupMonth] = useState<number>(((run.month % 12) + 1));
+  const [dupYear, setDupYear] = useState<number>(run.month === 12 ? run.year + 1 : run.year);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
