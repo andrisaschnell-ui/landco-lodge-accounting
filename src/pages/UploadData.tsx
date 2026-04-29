@@ -408,6 +408,27 @@ export default function UploadData() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!dupDialog} onOpenChange={(o) => { if (!o) setDupDialog(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Payroll for {dupDialog ? `${MONTHS[dupDialog.month - 1]} ${dupDialog.year}` : ""} already exists</AlertDialogTitle>
+            <AlertDialogDescription>
+              A payroll run for this month already exists. Do you want to replace it?
+              The existing month — header panel and all rows — will be permanently deleted before importing the new file. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDupDialog(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setDupDialog(null); handleImport(true); }}
+            >
+              Replace existing month
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
