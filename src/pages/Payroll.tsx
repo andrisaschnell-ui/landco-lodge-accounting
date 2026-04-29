@@ -739,6 +739,69 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
         </div>
       </CardContent>
     </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {MONTH_NAMES[run.month]} {run.year} payroll?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the entire month — the black header panel and all rows
+              ({localLines.length} employee {localLines.length === 1 ? "line" : "lines"}). This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); deleteEntireMonth(); }}
+              disabled={isSaving}
+            >
+              {isSaving ? "Deleting…" : "Delete month"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate {MONTH_NAMES[run.month]} {run.year}</DialogTitle>
+            <DialogDescription>
+              Choose the target month. All {localLines.length} payroll lines will be cloned exactly as-is into the new month.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target month</label>
+              <Select value={String(dupMonth)} onValueChange={(v) => setDupMonth(parseInt(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTH_NAMES.slice(1).map((name, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Target year</label>
+              <Select value={String(dupYear)} onValueChange={(v) => setDupYear(parseInt(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[run.year - 1, run.year, run.year + 1, run.year + 2].map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDuplicateDialog(false)} disabled={isDuplicating}>Cancel</Button>
+            <Button onClick={duplicateMonth} disabled={isDuplicating || (dupMonth === run.month && dupYear === run.year)}>
+              {isDuplicating ? "Duplicating…" : "Create duplicate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
   );
 }
 
