@@ -455,6 +455,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
   }, {});
 
   return (
+    <>
     <Card className="shadow-xl mb-6 bg-white border border-slate-200">
       <CardHeader className="bg-slate-800 text-white p-4 lg:px-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
