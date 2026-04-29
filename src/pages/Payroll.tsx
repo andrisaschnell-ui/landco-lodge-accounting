@@ -803,6 +803,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
   );
 }
 
