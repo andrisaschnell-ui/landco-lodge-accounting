@@ -5,9 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, FileSpreadsheet, Plus, Trash, FileText, Filter, Save, FileUp, ZoomIn, ZoomOut, ArrowUp, ArrowDown } from "lucide-react";
+import { Download, FileSpreadsheet, Plus, Trash, FileText, Filter, Save, FileUp, ZoomIn, ZoomOut, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 function formatMZN(v: number) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(Number(v) || 0);
