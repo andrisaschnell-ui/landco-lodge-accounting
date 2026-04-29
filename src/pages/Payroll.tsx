@@ -128,12 +128,101 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
     setLocalLines(prev => prev.filter(l => l.tempId !== tempId));
   };
 
-  const deleteMonthData = async () => {
-    if (!confirm("Are you sure you want to delete all data for this month?")) return;
+  const deleteEntireMonth = async () => {
     setIsSaving(true);
-    await supabase.from("salary_lines").delete().eq("salary_run_id", run.id);
-    await queryClient.invalidateQueries({ queryKey: ["salary-lines"] });
+    try {
+      const { error: linesErr } = await supabase.from("salary_lines").delete().eq("salary_run_id", run.id);
+      if (linesErr) throw linesErr;
+      const { error: runErr } = await supabase.from("salary_runs").delete().eq("id", run.id);
+      if (runErr) throw runErr;
+      toast({ title: "Month deleted", description: `${MONTH_NAMES[run.month]} ${run.year} payroll removed.` });
+      await queryClient.invalidateQueries({ queryKey: ["salary-runs"] });
+      await queryClient.invalidateQueries({ queryKey: ["salary-lines"] });
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    }
     setIsSaving(false);
+    setShowDeleteDialog(false);
+  };
+
+  const duplicateMonth = async () => {
+    setIsDuplicating(true);
+    try {
+      // Refuse if target month already exists
+      const { data: existing } = await supabase
+        .from("salary_runs")
+        .select("id")
+        .eq("month", dupMonth)
+        .eq("year", dupYear)
+        .maybeSingle();
+      if (existing) {
+        throw new Error(`A payroll run for ${MONTH_NAMES[dupMonth]} ${dupYear} already exists. Delete it first.`);
+      }
+
+      // Create new run (clone totals as-is)
+      const { data: newRun, error: runErr } = await supabase
+        .from("salary_runs")
+        .insert({
+          month: dupMonth,
+          year: dupYear,
+          status: "draft",
+          total_gross: run.total_gross || 0,
+          total_net: run.total_net || 0,
+          total_irps: run.total_irps || 0,
+          total_inss_employee: run.total_inss_employee || 0,
+          total_inss_employer: run.total_inss_employer || 0,
+        })
+        .select("id")
+        .single();
+      if (runErr) throw runErr;
+
+      // Clone every line as-is, pointing at the new run
+      if (localLines.length > 0) {
+        const now = Date.now();
+        const cloned = localLines.map((l, idx) => ({
+          salary_run_id: newRun.id,
+          employee_id: l.employee_id,
+          base_salary: l.base_salary,
+          food_allowance: l.food_allowance,
+          back_payment: l.back_payment,
+          days_worked: l.days_worked,
+          monthly_salary: l.monthly_salary,
+          nightshift_hours: l.nightshift_hours,
+          guardas_25: l.guardas_25,
+          overtime_15x_hours: l.overtime_15x_hours,
+          overtime_15x_amount: l.overtime_15x_amount,
+          overtime_2x_hours: l.overtime_2x_hours,
+          overtime_2x_amount: l.overtime_2x_amount,
+          gratification: l.gratification,
+          holiday_days: l.holiday_days,
+          holiday_amount: l.holiday_amount,
+          gross_total: l.gross_total,
+          advance: l.advance,
+          irps: l.irps,
+          debt: l.debt,
+          inss_employee: l.inss_employee,
+          sind: l.sind,
+          total_deductions: l.total_deductions,
+          net_salary: l.net_salary,
+          nib: l.nib || l.employees?.nib || null,
+          category: l.category,
+          created_at: new Date(now + idx * 1000).toISOString(),
+        })).filter((l) => l.employee_id);
+
+        if (cloned.length > 0) {
+          const { error: insErr } = await supabase.from("salary_lines").insert(cloned);
+          if (insErr) throw insErr;
+        }
+      }
+
+      toast({ title: "Month duplicated", description: `Created ${MONTH_NAMES[dupMonth]} ${dupYear} from ${MONTH_NAMES[run.month]} ${run.year}.` });
+      await queryClient.invalidateQueries({ queryKey: ["salary-runs"] });
+      await queryClient.invalidateQueries({ queryKey: ["salary-lines"] });
+      setShowDuplicateDialog(false);
+    } catch (e: any) {
+      toast({ title: "Duplicate failed", description: e.message, variant: "destructive" });
+    }
+    setIsDuplicating(false);
   };
 
   const saveChanges = async () => {
