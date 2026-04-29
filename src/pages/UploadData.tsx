@@ -254,6 +254,11 @@ export default function UploadData() {
       setState((s) => ({ ...s, status: "success", recordCount: imported }));
       toast({ title: "Import complete", description: `${imported} records imported successfully.` });
     } catch (err) {
+      if (err instanceof DuplicateMonthError) {
+        setState((s) => ({ ...s, status: "parsed" }));
+        setDupDialog({ month: err.month, year: err.year });
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Import failed";
       setState((s) => ({ ...s, status: "error", error: msg }));
       toast({ title: "Import failed", description: msg, variant: "destructive" });
