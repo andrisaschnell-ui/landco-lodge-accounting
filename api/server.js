@@ -35,6 +35,13 @@ const TABLES = new Set([
   "accounts", "accounting_periods",
   // Cash Control (isolated notebook)
   "cash_sheets","cash_transactions","cash_dropdown_options","cash_allocation_columns",
+  // Release 2
+  "budgets",
+  // Release 4: assets, inventory, banking, fx, attachments, audit
+  "fixed_assets","depreciation_schedule",
+  "inventory_items","inventory_movements",
+  "bank_reconciliations","fx_revaluations",
+  "document_attachments","audit_log",
 ]);
 
 function requireAuth(req, res, next) {
