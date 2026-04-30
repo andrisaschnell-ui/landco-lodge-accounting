@@ -5,6 +5,7 @@ import {
   Wallet, Eye, ClipboardList, Database, Settings as SettingsIcon,
   Scale, BookOpenCheck, CalendarClock as CalendarLock,
   TrendingUp, Target, UserCheck,
+  Package, Boxes, BookCheck, Coins, ShieldCheck, History,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -45,6 +46,12 @@ const accountingItems = [
   { title: "Financial Statements", url: "/accounting/statements", icon: TrendingUp },
   { title: "Budgets", url: "/accounting/budgets", icon: Target },
   { title: "Customer / Supplier Ledgers", url: "/accounting/party-ledgers", icon: UserCheck },
+  { title: "Fixed Assets", url: "/accounting/fixed-assets", icon: Package },
+  { title: "Inventory", url: "/accounting/inventory", icon: Boxes },
+  { title: "Bank Reconciliation", url: "/accounting/bank-reconciliation", icon: BookCheck },
+  { title: "FX Revaluation", url: "/accounting/fx-revaluation", icon: Coins },
+  { title: "Approvals", url: "/accounting/approvals", icon: ShieldCheck },
+  { title: "Audit Log", url: "/accounting/audit-log", icon: History },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
   { title: "Shareholder Statements", url: "/accounting/shareholders", icon: Users },
 ];

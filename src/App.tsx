@@ -36,6 +36,12 @@ import AccountingPeriods from "./pages/AccountingPeriods";
 import FinancialStatements from "./pages/FinancialStatements";
 import Budgets from "./pages/Budgets";
 import PartyLedgers from "./pages/PartyLedgers";
+import FixedAssets from "./pages/FixedAssets";
+import Inventory from "./pages/Inventory";
+import BankReconciliation from "./pages/BankReconciliation";
+import FxRevaluation from "./pages/FxRevaluation";
+import Approvals from "./pages/Approvals";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -108,6 +114,12 @@ const App = () => (
                 <Route path="/accounting/statements" element={<FinancialStatements />} />
                 <Route path="/accounting/budgets" element={<Budgets />} />
                 <Route path="/accounting/party-ledgers" element={<PartyLedgers />} />
+                <Route path="/accounting/fixed-assets" element={<FixedAssets />} />
+                <Route path="/accounting/inventory" element={<Inventory />} />
+                <Route path="/accounting/bank-reconciliation" element={<BankReconciliation />} />
+                <Route path="/accounting/fx-revaluation" element={<FxRevaluation />} />
+                <Route path="/accounting/approvals" element={<Approvals />} />
+                <Route path="/accounting/audit-log" element={<AuditLog />} />
                 <Route path="/cash-control" element={<CashControl />} />
                 <Route path="/cash-control/display" element={<CashControlDisplay />} />
                 <Route path="/cash-control/display/:type" element={<CashControlDisplay />} />
