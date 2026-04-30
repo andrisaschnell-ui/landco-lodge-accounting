@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { login as localLogin } from "@/lib/api";
+import { login as localLogin, getApiBase } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
@@ -14,38 +14,63 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  async function doLogin() {
+    if (isLocalMode()) {
+      await localLogin(email, password);
+      window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(error.message);
+    }
+  }
+
+  async function doAdminSignup() {
+    if (!pin) throw new Error("Admin PIN required to create a new account");
+    if (password.length < 8) throw new Error("Password must be at least 8 characters");
+
+    if (isLocalMode()) {
+      const r = await fetch(`${getApiBase()}/auth/signup-admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, pin }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || "signup failed");
+    } else {
+      const { data, error } = await supabase.functions.invoke("signup-admin", {
+        body: { email, password, pin },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+    }
+    // Auto sign-in after successful admin creation
+    await doLogin();
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    if (isLogin) {
-      if (isLocalMode()) {
-        try {
-          await localLogin(email, password);
-          window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
-        } catch (localError: any) {
-          toast({ title: "Login failed", description: localError.message, variant: "destructive" });
-          setLoading(false);
-          return;
-        }
+    try {
+      if (isLogin) {
+        await doLogin();
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          toast({ title: "Login failed", description: error.message, variant: "destructive" });
-          setLoading(false);
-          return;
-        }
+        await doAdminSignup();
+        toast({ title: "Admin account ready", description: `${email} created with admin privileges.` });
       }
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
-      else toast({ title: "Account created", description: "Check your email for confirmation." });
+    } catch (err: any) {
+      toast({
+        title: isLogin ? "Login failed" : "Admin signup failed",
+        description: err?.message || "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -67,14 +92,14 @@ export default function Auth() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                  placeholder="••••••••" 
-                  minLength={6} 
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  minLength={isLogin ? 6 : 8}
                   className="pr-10"
                 />
                 <button
@@ -86,14 +111,39 @@ export default function Auth() {
                 </button>
               </div>
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="pin">Admin PIN</Label>
+                <Input
+                  id="pin"
+                  type="password"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  required
+                  placeholder="Required to create an admin account"
+                />
+                <p className="text-xs text-muted-foreground">
+                  New accounts are created with full admin privileges. Ask the system owner for the PIN.
+                </p>
+              </div>
+            )}
+
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
+              {loading ? "Loading..." : isLogin ? "Sign In" : "Create Admin Account"}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-            <button className="text-primary underline" onClick={() => setIsLogin(!isLogin)}>
-              {isLogin ? "Sign Up" : "Sign In"}
+            {isLogin ? "Need to create an admin account?" : "Already have an account?"}{" "}
+            <button
+              type="button"
+              className="text-primary underline"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setPin("");
+              }}
+            >
+              {isLogin ? "Admin Sign Up" : "Sign In"}
             </button>
           </p>
         </CardContent>
