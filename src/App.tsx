@@ -30,6 +30,9 @@ import CashControlDisplay from "./pages/CashControlDisplay";
 import CashControlReports from "./pages/CashControlReports";
 import DatabaseBackup from "./pages/DatabaseBackup";
 import Settings from "./pages/Settings";
+import TrialBalance from "./pages/TrialBalance";
+import AccountLedger from "./pages/AccountLedger";
+import AccountingPeriods from "./pages/AccountingPeriods";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -96,6 +99,9 @@ const App = () => (
                 <Route path="/accounting/suspense" element={<SuspenseReview />} />
                 <Route path="/accounting/reports" element={<FinancialReports />} />
                 <Route path="/accounting/shareholders" element={<ShareholderReports />} />
+                <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+                <Route path="/accounting/ledger" element={<AccountLedger />} />
+                <Route path="/accounting/periods" element={<AccountingPeriods />} />
                 <Route path="/cash-control" element={<CashControl />} />
                 <Route path="/cash-control/display" element={<CashControlDisplay />} />
                 <Route path="/cash-control/display/:type" element={<CashControlDisplay />} />

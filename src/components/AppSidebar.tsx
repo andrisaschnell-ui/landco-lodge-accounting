@@ -3,6 +3,7 @@ import {
   FileSpreadsheet, Upload, LogOut, BarChart3,
   BookOpen, ReceiptText, FileText, Settings2, BarChart, AlertTriangle,
   Wallet, Eye, ClipboardList, Database, Settings as SettingsIcon,
+  Scale, BookOpenCheck, CalendarClock as CalendarLock,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -33,10 +34,13 @@ const mainItems = [
 const accountingItems = [
   { title: "Chart of Accounts", url: "/accounting/accounts", icon: BookOpen },
   { title: "Journal Entries", url: "/accounting/journal", icon: FileText },
+  { title: "Account Ledger", url: "/accounting/ledger", icon: BookOpenCheck },
+  { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
   { title: "Invoices", url: "/accounting/invoices", icon: ReceiptText },
   { title: "Expense Payments", url: "/accounting/expense-payments", icon: Wallet },
   { title: "Account Mapping", url: "/accounting/mapping", icon: Settings2 },
   { title: "Suspense Review", url: "/accounting/suspense", icon: AlertTriangle },
+  { title: "Periods", url: "/accounting/periods", icon: CalendarLock },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
   { title: "Shareholder Statements", url: "/accounting/shareholders", icon: Users },
 ];
