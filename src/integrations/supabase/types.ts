@@ -80,6 +80,51 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          details: Json | null
+          id: number
+          ip_address: string | null
+          new_data: Json | null
+          occurred_at: string
+          old_data: Json | null
+          row_id: string | null
+          table_name: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          details?: Json | null
+          id?: number
+          ip_address?: string | null
+          new_data?: Json | null
+          occurred_at?: string
+          old_data?: Json | null
+          row_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          details?: Json | null
+          id?: number
+          ip_address?: string | null
+          new_data?: Json | null
+          occurred_at?: string
+          old_data?: Json | null
+          row_id?: string | null
+          table_name?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       bank_accounts: {
         Row: {
           account_number: string | null
@@ -154,6 +199,51 @@ export type Database = {
           },
         ]
       }
+      bank_reconciliations: {
+        Row: {
+          bank_account_id: string
+          book_balance: number
+          created_at: string
+          difference: number | null
+          id: string
+          month: number
+          notes: string | null
+          reconciled_at: string | null
+          reconciled_by: string | null
+          statement_balance: number
+          status: string
+          year: number
+        }
+        Insert: {
+          bank_account_id: string
+          book_balance?: number
+          created_at?: string
+          difference?: number | null
+          id?: string
+          month: number
+          notes?: string | null
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          statement_balance?: number
+          status?: string
+          year: number
+        }
+        Update: {
+          bank_account_id?: string
+          book_balance?: number
+          created_at?: string
+          difference?: number | null
+          id?: string
+          month?: number
+          notes?: string | null
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          statement_balance?: number
+          status?: string
+          year?: number
+        }
+        Relationships: []
+      }
       bank_transactions: {
         Row: {
           balance: number | null
@@ -165,7 +255,10 @@ export type Database = {
           description: string
           id: string
           journal_entry_id: string | null
+          matched_je_id: string | null
           month: number
+          reconciled: boolean
+          reconciliation_id: string | null
           reference: string | null
           year: number
         }
@@ -179,7 +272,10 @@ export type Database = {
           description: string
           id?: string
           journal_entry_id?: string | null
+          matched_je_id?: string | null
           month: number
+          reconciled?: boolean
+          reconciliation_id?: string | null
           reference?: string | null
           year: number
         }
@@ -193,7 +289,10 @@ export type Database = {
           description?: string
           id?: string
           journal_entry_id?: string | null
+          matched_je_id?: string | null
           month?: number
+          reconciled?: boolean
+          reconciliation_id?: string | null
           reference?: string | null
           year?: number
         }
@@ -499,6 +598,8 @@ export type Database = {
         Row: {
           accent_color: string
           address: string | null
+          approval_required: boolean
+          approval_threshold_mzn: number
           backup_folder_path: string | null
           created_at: string
           currency: string
@@ -520,6 +621,8 @@ export type Database = {
         Insert: {
           accent_color?: string
           address?: string | null
+          approval_required?: boolean
+          approval_threshold_mzn?: number
           backup_folder_path?: string | null
           created_at?: string
           currency?: string
@@ -541,6 +644,8 @@ export type Database = {
         Update: {
           accent_color?: string
           address?: string | null
+          approval_required?: boolean
+          approval_threshold_mzn?: number
           backup_folder_path?: string | null
           created_at?: string
           currency?: string
@@ -558,6 +663,95 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           vat_rate?: number
+        }
+        Relationships: []
+      }
+      depreciation_schedule: {
+        Row: {
+          amount: number
+          asset_id: string
+          created_at: string
+          id: string
+          journal_entry_id: string | null
+          month: number
+          posted: boolean
+          posted_at: string | null
+          year: number
+        }
+        Insert: {
+          amount: number
+          asset_id: string
+          created_at?: string
+          id?: string
+          journal_entry_id?: string | null
+          month: number
+          posted?: boolean
+          posted_at?: string | null
+          year: number
+        }
+        Update: {
+          amount?: number
+          asset_id?: string
+          created_at?: string
+          id?: string
+          journal_entry_id?: string | null
+          month?: number
+          posted?: boolean
+          posted_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depreciation_schedule_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_attachments: {
+        Row: {
+          created_at: string
+          file_size_bytes: number | null
+          filename: string
+          id: string
+          mime_type: string | null
+          ocr_processed_at: string | null
+          ocr_status: string
+          ocr_text: string | null
+          source_id: string
+          source_table: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_size_bytes?: number | null
+          filename: string
+          id?: string
+          mime_type?: string | null
+          ocr_processed_at?: string | null
+          ocr_status?: string
+          ocr_text?: string | null
+          source_id: string
+          source_table: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_size_bytes?: number | null
+          filename?: string
+          id?: string
+          mime_type?: string | null
+          ocr_processed_at?: string | null
+          ocr_status?: string
+          ocr_text?: string | null
+          source_id?: string
+          source_table?: string
+          storage_path?: string
+          uploaded_by?: string | null
         }
         Relationships: []
       }
@@ -677,6 +871,9 @@ export type Database = {
       expense_transactions: {
         Row: {
           amount_mzn: number
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           category_id: string | null
           created_at: string
           date: string | null
@@ -692,6 +889,9 @@ export type Database = {
         }
         Insert: {
           amount_mzn?: number
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           category_id?: string | null
           created_at?: string
           date?: string | null
@@ -707,6 +907,9 @@ export type Database = {
         }
         Update: {
           amount_mzn?: number
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           category_id?: string | null
           created_at?: string
           date?: string | null
@@ -750,6 +953,128 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fixed_assets: {
+        Row: {
+          accum_depr_account_code: string
+          acquisition_cost: number
+          acquisition_date: string
+          asset_account_code: string
+          asset_code: string
+          category: string
+          created_at: string
+          depr_expense_account_code: string
+          depreciation_method: string
+          description: string | null
+          disposed_amount: number | null
+          disposed_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          property_id: string | null
+          salvage_value: number
+          status: string
+          updated_at: string
+          useful_life_months: number
+        }
+        Insert: {
+          accum_depr_account_code: string
+          acquisition_cost?: number
+          acquisition_date: string
+          asset_account_code: string
+          asset_code: string
+          category: string
+          created_at?: string
+          depr_expense_account_code: string
+          depreciation_method?: string
+          description?: string | null
+          disposed_amount?: number | null
+          disposed_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          property_id?: string | null
+          salvage_value?: number
+          status?: string
+          updated_at?: string
+          useful_life_months?: number
+        }
+        Update: {
+          accum_depr_account_code?: string
+          acquisition_cost?: number
+          acquisition_date?: string
+          asset_account_code?: string
+          asset_code?: string
+          category?: string
+          created_at?: string
+          depr_expense_account_code?: string
+          depreciation_method?: string
+          description?: string | null
+          disposed_amount?: number | null
+          disposed_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          property_id?: string | null
+          salvage_value?: number
+          status?: string
+          updated_at?: string
+          useful_life_months?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fx_revaluations: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          journal_entry_id: string | null
+          month: number
+          notes: string | null
+          posted: boolean
+          posted_at: string | null
+          posted_by: string | null
+          rate_used: number
+          total_adjustment: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          id?: string
+          journal_entry_id?: string | null
+          month: number
+          notes?: string | null
+          posted?: boolean
+          posted_at?: string | null
+          posted_by?: string | null
+          rate_used: number
+          total_adjustment?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          journal_entry_id?: string | null
+          month?: number
+          notes?: string | null
+          posted?: boolean
+          posted_at?: string | null
+          posted_by?: string | null
+          rate_used?: number
+          total_adjustment?: number
+          year?: number
+        }
+        Relationships: []
       }
       import_log: {
         Row: {
@@ -879,6 +1204,137 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          avg_cost: number
+          category: string | null
+          cogs_account_code: string
+          created_at: string
+          current_qty: number
+          description: string | null
+          id: string
+          inventory_account_code: string
+          is_active: boolean
+          name: string
+          property_id: string | null
+          reorder_level: number | null
+          sku: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          avg_cost?: number
+          category?: string | null
+          cogs_account_code?: string
+          created_at?: string
+          current_qty?: number
+          description?: string | null
+          id?: string
+          inventory_account_code?: string
+          is_active?: boolean
+          name: string
+          property_id?: string | null
+          reorder_level?: number | null
+          sku: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          avg_cost?: number
+          category?: string | null
+          cogs_account_code?: string
+          created_at?: string
+          current_qty?: number
+          description?: string | null
+          id?: string
+          inventory_account_code?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string | null
+          reorder_level?: number | null
+          sku?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          item_id: string
+          journal_entry_id: string | null
+          movement_date: string
+          movement_type: string
+          property_id: string | null
+          qty: number
+          reference: string | null
+          source_id: string | null
+          source_table: string | null
+          total_value: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          item_id: string
+          journal_entry_id?: string | null
+          movement_date?: string
+          movement_type: string
+          property_id?: string | null
+          qty: number
+          reference?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          total_value?: number
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          item_id?: string
+          journal_entry_id?: string | null
+          movement_date?: string
+          movement_type?: string
+          property_id?: string | null
+          qty?: number
+          reference?: string | null
+          source_id?: string | null
+          source_table?: string | null
+          total_value?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoices: {
         Row: {
@@ -1512,6 +1968,9 @@ export type Database = {
         Row: {
           allocation: string | null
           amount_excl: number | null
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           created_at: string | null
           description: string | null
           due_date: string | null
@@ -1528,6 +1987,9 @@ export type Database = {
         Insert: {
           allocation?: string | null
           amount_excl?: number | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
@@ -1544,6 +2006,9 @@ export type Database = {
         Update: {
           allocation?: string | null
           amount_excl?: number | null
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
@@ -1617,6 +2082,28 @@ export type Database = {
     Functions: {
       fn_account_id: { Args: { _code: string }; Returns: string }
       fn_account_or_suspense: { Args: { _code: string }; Returns: string }
+      fn_approve_expense: { Args: { _id: string }; Returns: undefined }
+      fn_audit_event: {
+        Args: {
+          _action: string
+          _details?: Json
+          _row_id: string
+          _table_name: string
+        }
+        Returns: undefined
+      }
+      fn_generate_depreciation_schedule: {
+        Args: { _asset_id: string }
+        Returns: number
+      }
+      fn_post_depreciation_month: {
+        Args: { _month: number; _year: number }
+        Returns: number
+      }
+      fn_reject_expense: {
+        Args: { _id: string; _reason: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
