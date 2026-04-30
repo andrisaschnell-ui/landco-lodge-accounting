@@ -16,6 +16,8 @@ const CARDS = [
   { key: "emola_two",   title: "Emola Two",    desc: "Mobile payments (account 2)",        icon: Smartphone },
   { key: "mpesa",       title: "Mpesa One",    desc: "Mobile payments (account 1)",        icon: CreditCard },
   { key: "mpesa_two",   title: "Mpesa Two",    desc: "Mobile payments (account 2)",        icon: CreditCard },
+  { key: "bim",         title: "BIM",          desc: "BIM bank account — cheques & transfers", icon: CreditCard },
+  { key: "bci",         title: "BCI",          desc: "BCI bank account — cheques & transfers", icon: CreditCard },
 ] as const;
 
 export default function CashControl() {

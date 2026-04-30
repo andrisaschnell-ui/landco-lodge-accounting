@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { SidebarModeIndicator } from "@/components/SidebarModeIndicator";
+import { SyncPanel } from "@/components/SyncPanel";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -29,6 +31,7 @@ const accountingItems = [
   { title: "Chart of Accounts", url: "/accounting/accounts", icon: BookOpen },
   { title: "Journal Entries", url: "/accounting/journal", icon: FileText },
   { title: "Invoices", url: "/accounting/invoices", icon: ReceiptText },
+  { title: "Expense Payments", url: "/accounting/expense-payments", icon: Wallet },
   { title: "Account Mapping", url: "/accounting/mapping", icon: Settings2 },
   { title: "Suspense Review", url: "/accounting/suspense", icon: AlertTriangle },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
@@ -59,6 +62,14 @@ export function AppSidebar() {
             {!collapsed && <span className="font-bold text-lg">LANACC</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
+            <div className="px-2 pb-2 space-y-2">
+              <SidebarModeIndicator />
+              {!collapsed && (
+                <div className="flex justify-center">
+                  <SyncPanel />
+                </div>
+              )}
+            </div>
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>

@@ -19,6 +19,7 @@ import ShareholderDetail from "./pages/ShareholderDetail";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import JournalEntries from "./pages/JournalEntries";
 import Invoices from "./pages/Invoices";
+import ExpensePayments from "./pages/ExpensePayments";
 import AccountMapping from "./pages/AccountMapping";
 import FinancialReports from "./pages/FinancialReports";
 import ShareholderReports from "./pages/ShareholderReports";
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="/accounting/journal" element={<JournalEntries />} />
                 <Route path="/accounting/invoices" element={<Invoices />} />
                 <Route path="/accounting/mapping" element={<AccountMapping />} />
+                <Route path="/accounting/expense-payments" element={<ExpensePayments />} />
                 <Route path="/accounting/suspense" element={<SuspenseReview />} />
                 <Route path="/accounting/reports" element={<FinancialReports />} />
                 <Route path="/accounting/shareholders" element={<ShareholderReports />} />

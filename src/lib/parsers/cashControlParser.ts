@@ -5,7 +5,7 @@
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 
-export type CashSheetType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two";
+export type CashSheetType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two" | "bim" | "bci";
 
 export interface CashTransaction {
   row_no: number | null;
