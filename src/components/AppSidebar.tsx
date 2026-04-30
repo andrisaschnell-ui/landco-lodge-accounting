@@ -31,6 +31,7 @@ const accountingItems = [
   { title: "Chart of Accounts", url: "/accounting/accounts", icon: BookOpen },
   { title: "Journal Entries", url: "/accounting/journal", icon: FileText },
   { title: "Invoices", url: "/accounting/invoices", icon: ReceiptText },
+  { title: "Expense Payments", url: "/accounting/expense-payments", icon: Wallet },
   { title: "Account Mapping", url: "/accounting/mapping", icon: Settings2 },
   { title: "Suspense Review", url: "/accounting/suspense", icon: AlertTriangle },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
