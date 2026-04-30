@@ -441,6 +441,72 @@ export type Database = {
           },
         ]
       }
+      company_settings: {
+        Row: {
+          accent_color: string
+          address: string | null
+          backup_folder_path: string | null
+          created_at: string
+          currency: string
+          default_property_id: string | null
+          default_shareholder_id: string | null
+          fiscal_year_start_month: number
+          id: string
+          invoice_series_prefix: string
+          logo_url: string | null
+          name: string
+          nuit: string | null
+          primary_color: string
+          singleton: boolean
+          sync_target_ref: string | null
+          updated_at: string
+          updated_by: string | null
+          vat_rate: number
+        }
+        Insert: {
+          accent_color?: string
+          address?: string | null
+          backup_folder_path?: string | null
+          created_at?: string
+          currency?: string
+          default_property_id?: string | null
+          default_shareholder_id?: string | null
+          fiscal_year_start_month?: number
+          id?: string
+          invoice_series_prefix?: string
+          logo_url?: string | null
+          name?: string
+          nuit?: string | null
+          primary_color?: string
+          singleton?: boolean
+          sync_target_ref?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vat_rate?: number
+        }
+        Update: {
+          accent_color?: string
+          address?: string | null
+          backup_folder_path?: string | null
+          created_at?: string
+          currency?: string
+          default_property_id?: string | null
+          default_shareholder_id?: string | null
+          fiscal_year_start_month?: number
+          id?: string
+          invoice_series_prefix?: string
+          logo_url?: string | null
+          name?: string
+          nuit?: string | null
+          primary_color?: string
+          singleton?: boolean
+          sync_target_ref?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vat_rate?: number
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           base_salary: number
