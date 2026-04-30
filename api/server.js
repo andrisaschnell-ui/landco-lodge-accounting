@@ -14,6 +14,7 @@ import reportRoutes from './routes/reports.js';
 import cashControlRoutes from './routes/cash_control.js';
 import backupRoutes from './routes/backup.js';
 import syncRoutes from './routes/sync.js';
+import { POSTERS, linkSourceToEntry } from './lib/autoPost.js';
 
 const { Pool } = pkg;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -44,43 +45,7 @@ function requireAuth(req, res, next) {
   catch { return res.status(401).json({ error: "invalid token" }); }
 }
 
-// ---------- auto-journal helpers ----------
-async function createAutoJournal(client, type, data) {
-  const { rows: [entry] } = await client.query(`
-    INSERT INTO public.journal_entries
-      (entry_date, description, entry_type, property_id, posted, created_by)
-    VALUES ($1, $2, $3, $4, true, $5)
-    RETURNING id`,
-    [data.date || new Date(), data.description || `${type} Entry`, type, data.property_id, '00000000-0000-0000-0000-000000000000']
-  );
-
-  if (type === 'income') {
-    await client.query(`
-      INSERT INTO public.journal_lines (journal_entry_id, account_id, debit, credit)
-      VALUES 
-        ($1, (SELECT id FROM public.accounts WHERE code='211'), $2, 0),
-        ($1, (SELECT id FROM public.accounts WHERE code='711'), 0, $2)`,
-      [entry.id, data.accommodation_amount_mzn || 0]
-    );
-  } else if (type === 'expense') {
-    // Look up the mapped account for the category
-    const { rows: [cat] } = await client.query(
-      "SELECT pgc_account_code FROM public.expense_categories WHERE id = $1",
-      [data.category_id]
-    );
-    
-    const accountCode = cat?.pgc_account_code || '69'; // Default to "Other Expenses" (6.9) if unmapped
-
-    await client.query(`
-      INSERT INTO public.journal_lines (journal_entry_id, account_id, debit, credit)
-      VALUES 
-        ($1, (SELECT id FROM public.accounts WHERE code=$2), $3, 0),
-        ($1, (SELECT id FROM public.accounts WHERE code='111'), 0, $3)`,
-      [entry.id, accountCode, data.amount_mzn || 0]
-    );
-  }
-  return entry.id;
-}
+// Auto-journal helpers live in api/lib/autoPost.js (shared with backfill script).
 
 // ---------- auth ----------
 app.post("/auth/login", async (req, res) => {
@@ -233,7 +198,7 @@ app.post("/api/:table", requireAuth, async (req, res) => {
   const cols = Object.keys(body);
   if (!cols.length) return res.status(400).json({ error: "empty body" });
   const params = cols.map((_, i) => `$${i + 1}`);
-  
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -243,22 +208,23 @@ app.post("/api/:table", requireAuth, async (req, res) => {
     );
     const row = rows[0];
 
-    // Trigger auto-journal for specific tables
-    if (t === 'income_transactions') {
-      const jeId = await createAutoJournal(client, 'income', row);
-      await client.query(`UPDATE public.income_transactions SET journal_entry_id = $1 WHERE id = $2`, [jeId, row.id]);
-      row.journal_entry_id = jeId;
-    } else if (t === 'expense_transactions') {
-      const jeId = await createAutoJournal(client, 'expense', row);
-      await client.query(`UPDATE public.expense_transactions SET journal_entry_id = $1 WHERE id = $2`, [jeId, row.id]);
-      row.journal_entry_id = jeId;
+    // Synchronous auto-post: if this table has a poster and the row isn't
+    // already linked to a journal entry, create one. Failure rolls back the
+    // whole transaction so the books stay balanced.
+    const poster = POSTERS[t];
+    if (poster && !row.journal_entry_id) {
+      const jeId = await poster(client, row, { userId: req.user.sub });
+      if (jeId) {
+        await linkSourceToEntry(client, t, row.id, jeId);
+        row.journal_entry_id = jeId;
+      }
     }
 
     await client.query('COMMIT');
     res.json(row);
-  } catch (e) { 
+  } catch (e) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: e.message }); 
+    res.status(500).json({ error: e.message });
   } finally {
     client.release();
   }
