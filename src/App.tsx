@@ -33,6 +33,9 @@ import Settings from "./pages/Settings";
 import TrialBalance from "./pages/TrialBalance";
 import AccountLedger from "./pages/AccountLedger";
 import AccountingPeriods from "./pages/AccountingPeriods";
+import FinancialStatements from "./pages/FinancialStatements";
+import Budgets from "./pages/Budgets";
+import PartyLedgers from "./pages/PartyLedgers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -102,6 +105,9 @@ const App = () => (
                 <Route path="/accounting/trial-balance" element={<TrialBalance />} />
                 <Route path="/accounting/ledger" element={<AccountLedger />} />
                 <Route path="/accounting/periods" element={<AccountingPeriods />} />
+                <Route path="/accounting/statements" element={<FinancialStatements />} />
+                <Route path="/accounting/budgets" element={<Budgets />} />
+                <Route path="/accounting/party-ledgers" element={<PartyLedgers />} />
                 <Route path="/cash-control" element={<CashControl />} />
                 <Route path="/cash-control/display" element={<CashControlDisplay />} />
                 <Route path="/cash-control/display/:type" element={<CashControlDisplay />} />
