@@ -955,6 +955,8 @@ export type Database = {
           posted_by: string | null
           property_id: string | null
           reference: string | null
+          source_id: string | null
+          source_table: string | null
         }
         Insert: {
           created_at?: string
@@ -968,6 +970,8 @@ export type Database = {
           posted_by?: string | null
           property_id?: string | null
           reference?: string | null
+          source_id?: string | null
+          source_table?: string | null
         }
         Update: {
           created_at?: string
@@ -981,6 +985,8 @@ export type Database = {
           posted_by?: string | null
           property_id?: string | null
           reference?: string | null
+          source_id?: string | null
+          source_table?: string | null
         }
         Relationships: []
       }
