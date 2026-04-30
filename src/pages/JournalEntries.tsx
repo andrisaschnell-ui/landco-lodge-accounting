@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 
 interface AccountRow { id: string; code: string; name: string; }
-interface JLine { id: string; account_id: string; debit: number; credit: number; memo: string | null; }
+interface JLine { id: string; journal_entry_id: string; account_id: string; debit: number; credit: number; memo: string | null; }
 interface JEntry {
   id: string; entry_date: string; description: string; entry_type: string;
   reference: string | null; posted: boolean; property_id: string | null;
