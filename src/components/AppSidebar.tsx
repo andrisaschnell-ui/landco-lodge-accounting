@@ -3,7 +3,7 @@ import {
   FileSpreadsheet, Upload, LogOut, BarChart3,
   BookOpen, ReceiptText, FileText, Settings2, BarChart, AlertTriangle,
   Wallet, Eye, ClipboardList, Database, Settings as SettingsIcon,
-  Scale, BookOpenCheck, CalendarLock,
+  Scale, BookOpenCheck, CalendarClock as CalendarLock,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
