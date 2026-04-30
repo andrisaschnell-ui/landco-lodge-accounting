@@ -52,6 +52,7 @@ services:
       - SUPABASE_URL=https://neakxehuonsrlvjrxhnd.supabase.co
       - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYWt4ZWh1b25zcmx2anJ4aG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODcyMzUsImV4cCI6MjA5Mjk2MzIzNX0.m9cL7bDv5jRFjBqmzxOYLus36ptEoY-BVdY7ohncMhg
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - ADMIN_SIGNUP_PIN=${ADMIN_SIGNUP_PIN:-}
     depends_on:
       - db
     networks:
