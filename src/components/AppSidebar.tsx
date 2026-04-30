@@ -2,16 +2,19 @@ import {
   LayoutDashboard, ArrowLeftRight, Users, Building2, Briefcase,
   FileSpreadsheet, Upload, LogOut, BarChart3,
   BookOpen, ReceiptText, FileText, Settings2, BarChart, AlertTriangle,
-  Wallet, Eye, ClipboardList, Database,
+  Wallet, Eye, ClipboardList, Database, Settings as SettingsIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SidebarModeIndicator } from "@/components/SidebarModeIndicator";
 import { SyncPanel } from "@/components/SyncPanel";
@@ -52,14 +55,27 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const { settings } = useCompanySettings();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const uid = (user as any)?.id;
+      if (!uid) { setIsAdmin(false); return; }
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      setIsAdmin(!!data?.some((r: any) => r.role === "admin"));
+    })();
+  }, [user]);
+
+  const companyName = settings?.name || "LANACC";
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            {!collapsed && <span className="font-bold text-lg">LANACC</span>}
+            {!collapsed && <span className="font-bold text-lg">{companyName}</span>}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="px-2 pb-2 space-y-2">
