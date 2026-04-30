@@ -228,3 +228,8 @@ BEGIN
     (v_entry_id, v_inssPay,   0,       v_inssE+v_inssR,  'INSS payable'),
     (v_entry_id, v_irpsPay,   0,       v_irps,           'IRPS payable');
   NEW.journal_entry_id := v_entry_id;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS trg_auto_post_payroll ON public.salary_runs;
+CREATE TRIGGER trg_auto_post_payroll BEFORE INSERT ON public.salary_runs
+  FOR EACH ROW EXECUTE FUNCTION public.fn_auto_post_payroll();
