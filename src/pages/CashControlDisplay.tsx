@@ -15,7 +15,7 @@ import { FloatingSaveButton } from "@/components/cash/FloatingSaveButton";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
 
-type CashType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two";
+type CashType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two" | "bim" | "bci";
 
 const TITLES: Record<CashType, string> = {
   petty_cash:  "Cash Display Ebony",
@@ -24,16 +24,19 @@ const TITLES: Record<CashType, string> = {
   emola_two:   "Emola Two Display",
   mpesa:       "Mpesa One Display",
   mpesa_two:   "Mpesa Two Display",
+  bim:         "BIM Bank Display",
+  bci:         "BCI Bank Display",
 };
 
 const CARD_LABELS: Record<CashType, string> = {
   petty_cash: "Cash Ebony", cash_landco: "Cash Landco",
   emola: "Emola One", emola_two: "Emola Two",
   mpesa: "Mpesa One", mpesa_two: "Mpesa Two",
+  bim: "BIM", bci: "BCI",
 };
 
-const CASH_TYPES: CashType[] = ["petty_cash", "cash_landco", "emola", "emola_two", "mpesa", "mpesa_two"];
-const isPettyLike = (t: CashType) => t === "petty_cash" || t === "cash_landco";
+const CASH_TYPES: CashType[] = ["petty_cash", "cash_landco", "emola", "emola_two", "mpesa", "mpesa_two", "bim", "bci"];
+const isPettyLike = (t: CashType) => t === "petty_cash" || t === "cash_landco" || t === "bim" || t === "bci";
 const isMpesaLike = (t: CashType) => t === "mpesa" || t === "mpesa_two";
 
 interface Tx {
