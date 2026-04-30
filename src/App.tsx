@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { CompanySettingsProvider } from "@/hooks/useCompanySettings";
 import { AppLayout } from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Auth from "./pages/Auth";
@@ -28,6 +29,7 @@ import CashControl from "./pages/CashControl";
 import CashControlDisplay from "./pages/CashControlDisplay";
 import CashControlReports from "./pages/CashControlReports";
 import DatabaseBackup from "./pages/DatabaseBackup";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +75,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <CompanySettingsProvider>
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route element={<ProtectedRoutes />}>
@@ -98,9 +101,11 @@ const App = () => (
                 <Route path="/cash-control/display/:type" element={<CashControlDisplay />} />
                 <Route path="/cash-control/reports" element={<CashControlReports />} />
                 <Route path="/database-backup" element={<DatabaseBackup />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </CompanySettingsProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
