@@ -4,6 +4,7 @@ import {
   BookOpen, ReceiptText, FileText, Settings2, BarChart, AlertTriangle,
   Wallet, Eye, ClipboardList, Database, Settings as SettingsIcon,
   Scale, BookOpenCheck, CalendarClock as CalendarLock,
+  TrendingUp, Target, UserCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -41,6 +42,9 @@ const accountingItems = [
   { title: "Account Mapping", url: "/accounting/mapping", icon: Settings2 },
   { title: "Suspense Review", url: "/accounting/suspense", icon: AlertTriangle },
   { title: "Periods", url: "/accounting/periods", icon: CalendarLock },
+  { title: "Financial Statements", url: "/accounting/statements", icon: TrendingUp },
+  { title: "Budgets", url: "/accounting/budgets", icon: Target },
+  { title: "Customer / Supplier Ledgers", url: "/accounting/party-ledgers", icon: UserCheck },
   { title: "Accounting Reports", url: "/accounting/reports", icon: BarChart },
   { title: "Shareholder Statements", url: "/accounting/shareholders", icon: Users },
 ];

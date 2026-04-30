@@ -268,6 +268,60 @@ export type Database = {
           },
         ]
       }
+      budgets: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          month: number
+          note: string | null
+          property_id: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month: number
+          note?: string | null
+          property_id?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month?: number
+          note?: string | null
+          property_id?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_allocation_columns: {
         Row: {
           column_name: string
@@ -845,6 +899,7 @@ export type Database = {
           issued_by: string | null
           journal_entry_id: string | null
           line_items: Json
+          paid_amount: number
           property_id: string | null
           status: string
           subtotal_mzn: number
@@ -870,6 +925,7 @@ export type Database = {
           issued_by?: string | null
           journal_entry_id?: string | null
           line_items?: Json
+          paid_amount?: number
           property_id?: string | null
           status?: string
           subtotal_mzn?: number
@@ -895,6 +951,7 @@ export type Database = {
           issued_by?: string | null
           journal_entry_id?: string | null
           line_items?: Json
+          paid_amount?: number
           property_id?: string | null
           status?: string
           subtotal_mzn?: number
@@ -1457,10 +1514,13 @@ export type Database = {
           amount_excl: number | null
           created_at: string | null
           description: string | null
+          due_date: string | null
           id: string
           invoice_date: string | null
           invoice_number: string | null
           journal_entry_id: string | null
+          paid_amount: number
+          status: string
           supplier_id: string | null
           total_amount: number | null
           vat_amount: number | null
@@ -1470,10 +1530,13 @@ export type Database = {
           amount_excl?: number | null
           created_at?: string | null
           description?: string | null
+          due_date?: string | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
           journal_entry_id?: string | null
+          paid_amount?: number
+          status?: string
           supplier_id?: string | null
           total_amount?: number | null
           vat_amount?: number | null
@@ -1483,10 +1546,13 @@ export type Database = {
           amount_excl?: number | null
           created_at?: string | null
           description?: string | null
+          due_date?: string | null
           id?: string
           invoice_date?: string | null
           invoice_number?: string | null
           journal_entry_id?: string | null
+          paid_amount?: number
+          status?: string
           supplier_id?: string | null
           total_amount?: number | null
           vat_amount?: number | null
