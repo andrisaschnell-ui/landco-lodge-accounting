@@ -183,6 +183,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {isAdmin && (
+          <>
+            <div className="h-4" aria-hidden />
+            <SidebarGroup>
+              <SidebarGroupLabel>
+                {!collapsed && <span className="font-bold">Administration</span>}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/settings" className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
+                        <SettingsIcon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>Settings</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
       </SidebarContent>
       <SidebarFooter>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
