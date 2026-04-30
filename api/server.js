@@ -98,6 +98,62 @@ app.post("/auth/login", async (req, res) => {
 
 app.get("/auth/me", requireAuth, (req, res) => res.json({ user: req.user }));
 
+// ---------- PIN-gated admin signup ----------
+// Anyone who knows ADMIN_SIGNUP_PIN can create a new admin user on this
+// local instance. Creates the row in auth.users (bcrypt hash) and grants
+// 'admin' in public.user_roles. Idempotent: if the email already exists,
+// the password is updated and the admin role is granted.
+app.post("/auth/signup-admin", async (req, res) => {
+  const PIN = process.env.ADMIN_SIGNUP_PIN;
+  if (!PIN) return res.status(500).json({ error: "ADMIN_SIGNUP_PIN not configured on server" });
+
+  const { email, password, pin, display_name } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: "email and password required" });
+  if (String(password).length < 8) return res.status(400).json({ error: "password must be at least 8 characters" });
+  if (pin !== PIN) return res.status(403).json({ error: "invalid admin PIN" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("CREATE SCHEMA IF NOT EXISTS auth");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS auth.users (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        email text UNIQUE NOT NULL,
+        password_hash text NOT NULL,
+        display_name text,
+        created_at timestamptz DEFAULT now()
+      )`);
+
+    const hash = bcrypt.hashSync(String(password), 10);
+    const lowered = String(email).trim().toLowerCase();
+
+    const { rows } = await client.query(
+      `INSERT INTO auth.users (email, password_hash, display_name)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
+       RETURNING id, email`,
+      [lowered, hash, display_name || lowered]
+    );
+    const userId = rows[0].id;
+
+    await client.query(
+      `INSERT INTO public.user_roles (user_id, role)
+       VALUES ($1, 'admin'::app_role)
+       ON CONFLICT (user_id, role) DO NOTHING`,
+      [userId]
+    );
+
+    await client.query("COMMIT");
+    res.json({ ok: true, user_id: userId, email: lowered });
+  } catch (e) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
 // ---------- repair users (recreates the two admin accounts) ----------
 // Public endpoint by design: lets you log back in when credentials are lost.
 // Protected only by knowing the two fixed admin emails (it never changes any
