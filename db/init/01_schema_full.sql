@@ -967,7 +967,8 @@ ALTER TABLE public.supplier_invoices
 
 ALTER TABLE public.company_settings
   ADD COLUMN IF NOT EXISTS approval_threshold_mzn numeric NOT NULL DEFAULT 50000,
-  ADD COLUMN IF NOT EXISTS approval_required boolean NOT NULL DEFAULT true;
+  ADD COLUMN IF NOT EXISTS approval_required boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS telephone text;
 
 -- ---------- 7. AUDIT LOG ---------------------------------------------
 CREATE TABLE IF NOT EXISTS public.audit_log (
