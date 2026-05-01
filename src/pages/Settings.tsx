@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Upload } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 export default function Settings() {
   const { settings, loading, update, refresh } = useCompanySettings();
@@ -71,7 +72,7 @@ export default function Settings() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold">Company Settings</h1>
+        <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Company Settings</h1><HelpPopover route="/settings" size={18} /></div>
         <p className="text-muted-foreground">Configure identity, financial defaults, branding, and operations for this installation.</p>
       </div>
 

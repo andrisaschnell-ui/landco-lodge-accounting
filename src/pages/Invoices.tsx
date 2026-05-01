@@ -16,6 +16,7 @@ import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
 import InvoiceForm from "@/components/InvoiceForm";
+import { HelpPopover } from "@/components/HelpPopover";
 
 function fmt(v: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(Number(v ?? 0));
@@ -40,7 +41,7 @@ export default function Invoices() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+        <div className="flex items-center gap-2"><h1 className="text-3xl font-bold tracking-tight">Invoices</h1><HelpPopover route="/accounting/invoices" size={18} /></div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>

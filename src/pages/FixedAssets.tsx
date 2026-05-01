@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Calculator, Send } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type Asset = {
   id: string; asset_code: string; name: string; category: string;
@@ -68,7 +69,7 @@ export default function FixedAssets() {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Fixed Assets</h1>
+        <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Fixed Assets</h1><HelpPopover route="/accounting/fixed-assets" size={18} /></div>
         <div className="flex gap-2 items-end">
           <div>
             <Label className="text-xs">Year</Label>

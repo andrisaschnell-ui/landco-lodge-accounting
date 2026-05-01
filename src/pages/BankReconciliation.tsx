@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, CheckCircle2 } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type Bank = { id: string; name: string; bank_name: string };
 type Tx = {
@@ -101,7 +102,7 @@ export default function BankReconciliation() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-bold">Bank Reconciliation</h1>
+      <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Bank Reconciliation</h1><HelpPopover route="/accounting/bank-reconciliation" size={18} /></div>
 
       <Card>
         <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-5 gap-3">

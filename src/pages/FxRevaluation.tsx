@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Send } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 2 }).format(n || 0);
 
@@ -75,7 +76,7 @@ export default function FxRevaluation() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-bold">FX Revaluation (Month-end)</h1>
+      <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">FX Revaluation (Month-end)</h1><HelpPopover route="/accounting/fx-revaluation" size={18} /></div>
 
       <Card>
         <CardHeader><CardTitle>Post adjustment</CardTitle></CardHeader>

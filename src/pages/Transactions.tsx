@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { HelpPopover } from "@/components/HelpPopover";
 
 function formatMZN(v: number) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(v);
@@ -69,7 +70,7 @@ export default function Transactions() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Transactions</h1>
+      <div className="flex items-center gap-2"><h1 className="text-3xl font-bold">Transactions</h1><HelpPopover route="/transactions" size={18} /></div>
       <Tabs defaultValue="income">
         <TabsList>
           <TabsTrigger value="income">Income ({income?.length ?? 0})</TabsTrigger>

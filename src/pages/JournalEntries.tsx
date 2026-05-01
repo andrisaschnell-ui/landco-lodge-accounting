@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronRight, AlertTriangle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { HelpPopover } from "@/components/HelpPopover";
 
 interface AccountRow { id: string; code: string; name: string; }
 interface JLine { id: string; journal_entry_id: string; account_id: string; debit: number; credit: number; memo: string | null; }
@@ -230,7 +231,7 @@ export default function JournalEntries() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Journal Entries</h1>
+        <div className="flex items-center gap-2"><h1 className="text-3xl font-bold tracking-tight">Journal Entries</h1><HelpPopover route="/accounting/journal" size={18} /></div>
       </div>
 
       {unpostedCount > 0 && (

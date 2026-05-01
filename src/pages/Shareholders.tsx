@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { HelpPopover } from "@/components/HelpPopover";
 
 function formatMZN(v: number) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(v);
@@ -27,7 +28,7 @@ export default function Shareholders() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Shareholders</h1>
+      <div className="flex items-center gap-2"><h1 className="text-3xl font-bold">Shareholders</h1><HelpPopover route="/shareholders" size={18} /></div>
 
       <Card>
         <CardHeader><CardTitle>Shareholders</CardTitle></CardHeader>
