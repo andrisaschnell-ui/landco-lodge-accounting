@@ -27,7 +27,6 @@ import {
 } from "@/lib/importService";
 import { importCashControl } from "@/lib/cashControlImport";
 import {
-import { HelpPopover } from "@/components/HelpPopover";
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -37,6 +36,7 @@ import { HelpPopover } from "@/components/HelpPopover";
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";

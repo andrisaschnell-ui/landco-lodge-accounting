@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Loader2, Wallet } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 const PETTY_CASH_VALUE = "petty_cash";
 const SUSPENSE_CODE = "2999";
