@@ -160,6 +160,7 @@ export default function ExpensePayments() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Wallet className="h-7 w-7 text-primary" /> Expense Payments
+          <HelpPopover route="/accounting/expense-payments" size={18} />
         </h1>
         <p className="text-muted-foreground">Record an expense payment. Posts to the journal using your Account Mapping.</p>
       </div>

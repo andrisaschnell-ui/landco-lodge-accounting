@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { HelpPopover } from "@/components/HelpPopover";
 
 /**
  * Suspense Review — every expense/JE that was posted to account 262 (Suspense)
@@ -82,7 +83,10 @@ export default function SuspenseReview() {
     <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
-          <CardTitle>Suspense Review</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Suspense Review
+            <HelpPopover route="/accounting/suspense" size={18} />
+          </CardTitle>
           <CardDescription>
             Entries currently parked on account 262 (Conta Suspensa). Reassign each credit to the
             actual cash, bank or supplier account it should hit.
