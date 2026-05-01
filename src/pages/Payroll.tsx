@@ -641,8 +641,15 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
                       <TableCell key={j} className={`border-r border-b p-1 ${cfg.bg || ""} ${cfg.center ? "text-center" : "text-right"}`}>
                         <input 
                           type="number"
+                          step="0.01"
                           className={`w-full font-mono bg-transparent border-0 outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 ${cfg.center ? "text-center" : "text-right"}`}
-                          value={l[cfg.field] || ""}
+                          value={
+                            l[cfg.field] === null || l[cfg.field] === undefined || l[cfg.field] === ""
+                              ? ""
+                              : cfg.center
+                                ? l[cfg.field]
+                                : Number(Math.round(Number(l[cfg.field]) * 100) / 100).toFixed(2)
+                          }
                           onChange={(e) => handleEditCell(l.tempId, cfg.field, parseFloat(e.target.value) || 0)}
                         />
                       </TableCell>
