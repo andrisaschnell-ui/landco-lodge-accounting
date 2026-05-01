@@ -261,10 +261,18 @@ export default function ShareholderReports() {
             </Card>
           </div>
 
-          {/* Period + House badge */}
-          <div className="flex gap-2 items-center">
+          {/* Period + House badge + Export */}
+          <div className="flex gap-2 items-center flex-wrap">
             <Badge variant="outline" className="text-sm px-3 py-1">{house?.name}</Badge>
             <Badge variant="secondary" className="text-sm px-3 py-1">{periodLabel}</Badge>
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportExcel}>
+                <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportPdf}>
+                <FileDown className="mr-1 h-4 w-4" /> PDF
+              </Button>
+            </div>
           </div>
 
           {/* Detailed Tabs */}
