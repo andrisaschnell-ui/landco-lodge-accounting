@@ -19,13 +19,36 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  async function logAuthEvent(action: "LOGIN" | "LOGIN_FAILED" | "LOGOUT", details: Record<string, any> = {}) {
+    try {
+      await supabase.rpc("fn_audit_event", {
+        _action: action,
+        _table_name: "auth",
+        _row_id: email || null,
+        _details: { email, ...details } as any,
+      });
+    } catch {
+      // never block auth on audit failure
+    }
+  }
+
   async function doLogin() {
     if (isLocalMode()) {
-      await localLogin(email, password);
-      window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
+      try {
+        await localLogin(email, password);
+        window.dispatchEvent(new CustomEvent("lanacc-auth-change"));
+        await logAuthEvent("LOGIN", { mode: "local" });
+      } catch (e: any) {
+        await logAuthEvent("LOGIN_FAILED", { mode: "local", reason: e?.message || "unknown" });
+        throw e;
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
+      if (error) {
+        await logAuthEvent("LOGIN_FAILED", { mode: "cloud", reason: error.message });
+        throw new Error(error.message);
+      }
+      await logAuthEvent("LOGIN", { mode: "cloud" });
     }
   }
 
