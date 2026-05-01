@@ -6,7 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, TrendingUp, TrendingDown, Users, Wallet } from "lucide-react";
+import { Home, TrendingUp, TrendingDown, Users, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const HOUSES = [
   { code: "H1", name: "H1 — Casa Luz" },
