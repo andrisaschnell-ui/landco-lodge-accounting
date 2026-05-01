@@ -614,6 +614,7 @@ export type Database = {
           primary_color: string
           singleton: boolean
           sync_target_ref: string | null
+          telephone: string | null
           updated_at: string
           updated_by: string | null
           vat_rate: number
@@ -637,6 +638,7 @@ export type Database = {
           primary_color?: string
           singleton?: boolean
           sync_target_ref?: string | null
+          telephone?: string | null
           updated_at?: string
           updated_by?: string | null
           vat_rate?: number
@@ -660,6 +662,7 @@ export type Database = {
           primary_color?: string
           singleton?: boolean
           sync_target_ref?: string | null
+          telephone?: string | null
           updated_at?: string
           updated_by?: string | null
           vat_rate?: number
