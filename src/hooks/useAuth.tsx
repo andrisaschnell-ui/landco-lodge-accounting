@@ -46,6 +46,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    // Log LOGOUT before clearing auth so actor_id can still be resolved.
+    try {
+      const email =
+        (localUser as any)?.email ??
+        (session?.user as any)?.email ??
+        null;
+      await supabase.rpc("fn_audit_event", {
+        _action: "LOGOUT",
+        _table_name: "auth",
+        _row_id: email,
+        _details: { email } as any,
+      });
+    } catch {
+      // never block sign-out on audit failure
+    }
     logout();
     setLocalUser(null);
     await supabase.auth.signOut();
