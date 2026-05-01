@@ -6,7 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, TrendingUp, TrendingDown, Users, Wallet } from "lucide-react";
+import { Home, TrendingUp, TrendingDown, Users, Wallet, FileDown, FileSpreadsheet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const HOUSES = [
   { code: "H1", name: "H1 — Casa Luz" },
@@ -62,6 +66,124 @@ export default function ShareholderReports() {
     : `Full Year ${selectedYear}`;
 
   const house = HOUSES.find(h => h.code === selectedHouse);
+
+  function exportExcel() {
+    if (!stmt) return;
+    const wb = XLSX.utils.book_new();
+    const num = (n: any) => Number(Number(n || 0).toFixed(2));
+
+    const summary = [
+      ["Shareholder Statement"],
+      ["House", house?.name || selectedHouse],
+      ["Period", periodLabel],
+      [],
+      ["Direct Income (100%)", num(stmt.total_direct_income)],
+      ["Direct Expenses (100%)", -num(stmt.total_direct_expenses)],
+      ["House Staff Salary (100%)", -num(stmt.direct_salary_total)],
+      ["Communal Staff (Your Share)", -num(stmt.shared_salary_total)],
+      ["Petty Cash (25% Share)", -num(stmt.petty_cash_share)],
+      ["NET POSITION", num(stmt.net_position)],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+
+    const income = [["Date", "Guest", "Description", "Amount MZN"],
+      ...(stmt.direct_income || []).map((r: any) => [r.date?.slice(0, 10), r.guest_name || "", r.description || "", num(r.amount)]),
+      ["", "", "Total", num(stmt.total_direct_income)]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(income), "Income");
+
+    const expenses = [["Date", "Category", "Description", "Amount MZN"],
+      ...(stmt.direct_expenses || []).map((r: any) => [r.date?.slice(0, 10), r.category || "", r.description || "", num(r.amount)]),
+      ["", "", "Total", num(stmt.total_direct_expenses)]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expenses), "Expenses");
+
+    const directSal = [["Employee", "Period", "Gross", "INSS Employer", "Total Cost"],
+      ...(stmt.direct_salary_lines || []).map((r: any) => [r.employee_name, `${r.month}/${r.year}`, num(r.gross_total), num(r.inss_employer), num(Number(r.gross_total) + Number(r.inss_employer))]),
+      ["", "", "", "Total", num(stmt.direct_salary_total)]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(directSal), "House Staff");
+
+    const sharedSal = [["Employee", "House", "Period", "Full Cost", "Your Share"],
+      ...(stmt.shared_salary_lines || []).map((r: any) => [r.employee_name, r.house_assignment, `${r.month}/${r.year}`, num(Number(r.gross_total) + Number(r.inss_employer)), num(r.owed)]),
+      ["", "", "", "Your Share", num(stmt.shared_salary_total)]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sharedSal), "Communal Staff");
+
+    const petty = [["Date", "Supplier/Description", "Allocation", "Full Amount", "Your Share (25%)"],
+      ...(stmt.petty_cash_lines || []).map((r: any) => [r.date?.slice(0, 10), r.supplier || r.description || "", r.allocation || "", num(r.amount), num(Number(r.amount) / 4)]),
+      ["", "", "", "Your Share", num(stmt.petty_cash_share)]];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(petty), "Petty Cash");
+
+    XLSX.writeFile(wb, `Shareholder_${selectedHouse}_${periodLabel.replace(/\s+/g, "_")}.xlsx`);
+  }
+
+  function exportPdf() {
+    if (!stmt) return;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Shareholder Statement", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${house?.name || selectedHouse}  •  ${periodLabel}`, 14, 22);
+
+    autoTable(doc, {
+      startY: 28,
+      head: [["Item", "Amount MZN"]],
+      body: [
+        ["Direct Income (100%)", fmt(stmt.total_direct_income)],
+        ["Direct Expenses (100%)", `(${fmt(stmt.total_direct_expenses)})`],
+        ["House Staff Salary (100%)", `(${fmt(stmt.direct_salary_total)})`],
+        ["Communal Staff (Your Share)", `(${fmt(stmt.shared_salary_total)})`],
+        ["Petty Cash (25% Share)", `(${fmt(stmt.petty_cash_share)})`],
+        ["NET POSITION", fmt(stmt.net_position)],
+      ],
+      headStyles: { fillColor: [40, 80, 120] },
+      columnStyles: { 1: { halign: "right" } },
+      styles: { fontSize: 9 },
+    });
+
+    const sections: Array<{ title: string; head: string[]; body: any[][] }> = [
+      {
+        title: "Direct Income",
+        head: ["Date", "Guest", "Description", "Amount"],
+        body: (stmt.direct_income || []).map((r: any) => [r.date?.slice(0, 10), r.guest_name || "", r.description || "", fmt(r.amount)]),
+      },
+      {
+        title: "Direct Expenses",
+        head: ["Date", "Category", "Description", "Amount"],
+        body: (stmt.direct_expenses || []).map((r: any) => [r.date?.slice(0, 10), r.category || "", r.description || "", fmt(r.amount)]),
+      },
+      {
+        title: "House Staff Salaries (100%)",
+        head: ["Employee", "Period", "Gross", "INSS Emp.", "Total"],
+        body: (stmt.direct_salary_lines || []).map((r: any) => [r.employee_name, `${r.month}/${r.year}`, fmt(r.gross_total), fmt(r.inss_employer), fmt(Number(r.gross_total) + Number(r.inss_employer))]),
+      },
+      {
+        title: "Communal Staff (Your Share)",
+        head: ["Employee", "House", "Period", "Full Cost", "Your Share"],
+        body: (stmt.shared_salary_lines || []).map((r: any) => [r.employee_name, r.house_assignment, `${r.month}/${r.year}`, fmt(Number(r.gross_total) + Number(r.inss_employer)), fmt(r.owed)]),
+      },
+      {
+        title: "Petty Cash — 25% Share",
+        head: ["Date", "Supplier/Description", "Allocation", "Full", "Your 25%"],
+        body: (stmt.petty_cash_lines || []).map((r: any) => [r.date?.slice(0, 10), r.supplier || r.description || "", r.allocation || "", fmt(r.amount), fmt(Number(r.amount) / 4)]),
+      },
+    ];
+
+    for (const s of sections) {
+      if (!s.body.length) continue;
+      const y = (doc as any).lastAutoTable.finalY + 8;
+      if (y > 250) doc.addPage();
+      doc.setFontSize(11);
+      doc.text(s.title, 14, y > 250 ? 15 : y);
+      autoTable(doc, {
+        startY: (y > 250 ? 18 : y + 2),
+        head: [s.head],
+        body: s.body,
+        headStyles: { fillColor: [60, 100, 140] },
+        styles: { fontSize: 8 },
+        columnStyles: { [s.head.length - 1]: { halign: "right" } },
+      });
+    }
+
+    doc.save(`Shareholder_${selectedHouse}_${periodLabel.replace(/\s+/g, "_")}.pdf`);
+  }
 
   return (
     <div className="space-y-6">
@@ -139,10 +261,18 @@ export default function ShareholderReports() {
             </Card>
           </div>
 
-          {/* Period + House badge */}
-          <div className="flex gap-2 items-center">
+          {/* Period + House badge + Export */}
+          <div className="flex gap-2 items-center flex-wrap">
             <Badge variant="outline" className="text-sm px-3 py-1">{house?.name}</Badge>
             <Badge variant="secondary" className="text-sm px-3 py-1">{periodLabel}</Badge>
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportExcel}>
+                <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportPdf}>
+                <FileDown className="mr-1 h-4 w-4" /> PDF
+              </Button>
+            </div>
           </div>
 
           {/* Detailed Tabs */}
