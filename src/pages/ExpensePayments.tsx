@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Loader2, Wallet } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 const PETTY_CASH_VALUE = "petty_cash";
 const SUSPENSE_CODE = "2999";
@@ -160,6 +161,7 @@ export default function ExpensePayments() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Wallet className="h-7 w-7 text-primary" /> Expense Payments
+          <HelpPopover route="/accounting/expense-payments" size={18} />
         </h1>
         <p className="text-muted-foreground">Record an expense payment. Posts to the journal using your Account Mapping.</p>
       </div>

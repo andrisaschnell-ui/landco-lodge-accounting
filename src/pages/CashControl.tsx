@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Wallet, Smartphone, CreditCard, Banknote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { HelpPopover } from "@/components/HelpPopover";
 
 interface Summary { count: number; sheets: number; lastMonth: string; opening: number; }
 
@@ -54,7 +55,7 @@ export default function CashControl() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Cash Control Uploaded</h1>
+        <div className="flex items-center gap-2"><h1 className="text-3xl font-bold">Cash Control Uploaded</h1><HelpPopover route="/cash-control" size={18} /></div>
         <p className="text-muted-foreground">Personal notebook for cash and mobile payments. Not linked to accounting.</p>
       </div>
 

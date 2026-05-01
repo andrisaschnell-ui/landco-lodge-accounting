@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Lock, Unlock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { HelpPopover } from "@/components/HelpPopover";
 
 const MONTHS = [
   "January","February","March","April","May","June",
@@ -60,7 +61,7 @@ export default function AccountingPeriods() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Accounting Periods</h1>
+        <div className="flex items-center gap-2"><h1 className="text-3xl font-bold tracking-tight">Accounting Periods</h1><HelpPopover route="/accounting/periods" size={18} /></div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setYear(year - 1)}>‹</Button>
           <span className="font-mono text-lg w-16 text-center">{year}</span>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type Item = {
   id: string; sku: string; name: string; unit: string; category: string | null;
@@ -78,7 +79,7 @@ export default function Inventory() {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventory (Weighted Average Cost)</h1>
+        <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Inventory (Weighted Average Cost)</h1><HelpPopover route="/accounting/inventory" size={18} /></div>
         <div className="flex gap-2">
           <Dialog open={openItem} onOpenChange={setOpenItem}>
             <DialogTrigger asChild><Button variant="outline"><Plus className="h-4 w-4 mr-2" />New Item</Button></DialogTrigger>

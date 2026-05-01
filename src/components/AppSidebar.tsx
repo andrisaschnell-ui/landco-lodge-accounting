@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SidebarModeIndicator } from "@/components/SidebarModeIndicator";
 import { SyncPanel } from "@/components/SyncPanel";
+import { HelpPopover } from "@/components/HelpPopover";
+import { helpContent } from "@/lib/helpContent";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -103,18 +105,23 @@ export function AppSidebar() {
             </div>
             <SidebarMenu>
               {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} className="relative group/help">
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
-                      className="hover:bg-muted/50"
+                      className="hover:bg-muted/50 pr-8"
                       activeClassName="bg-muted text-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!collapsed && helpContent[item.url] && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/help:opacity-100 transition-opacity">
+                      <HelpPopover route={item.url} />
+                    </div>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -128,17 +135,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {accountingItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} className="relative group/help">
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="hover:bg-muted/50"
+                      className="hover:bg-muted/50 pr-8"
                       activeClassName="bg-muted text-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!collapsed && helpContent[item.url] && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/help:opacity-100 transition-opacity">
+                      <HelpPopover route={item.url} />
+                    </div>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -154,18 +166,23 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {cashControlItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} className="relative group/help">
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       end={item.url === "/cash-control"}
-                      className="hover:bg-muted/50"
+                      className="hover:bg-muted/50 pr-8"
                       activeClassName="bg-muted text-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!collapsed && helpContent[item.url] && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/help:opacity-100 transition-opacity">
+                      <HelpPopover route={item.url} />
+                    </div>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -181,17 +198,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {databaseBackupItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} className="relative group/help">
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="hover:bg-muted/50"
+                      className="hover:bg-muted/50 pr-8"
                       activeClassName="bg-muted text-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!collapsed && helpContent[item.url] && (
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/help:opacity-100 transition-opacity">
+                      <HelpPopover route={item.url} />
+                    </div>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -207,13 +229,18 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem>
+                  <SidebarMenuItem className="relative group/help">
                     <SidebarMenuButton asChild>
-                      <NavLink to="/settings" className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
+                      <NavLink to="/settings" className="hover:bg-muted/50 pr-8" activeClassName="bg-muted text-primary font-medium">
                         <SettingsIcon className="mr-2 h-4 w-4" />
                         {!collapsed && <span>Settings</span>}
                       </NavLink>
                     </SidebarMenuButton>
+                    {!collapsed && helpContent["/settings"] && (
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/help:opacity-100 transition-opacity">
+                        <HelpPopover route="/settings" />
+                      </div>
+                    )}
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>

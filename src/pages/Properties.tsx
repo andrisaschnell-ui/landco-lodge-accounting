@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { HelpPopover } from "@/components/HelpPopover";
 
 export default function Properties() {
   const { data: properties } = useQuery({
@@ -23,7 +24,7 @@ export default function Properties() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Properties & Settings</h1>
+      <div className="flex items-center gap-2"><h1 className="text-3xl font-bold">Properties & Settings</h1><HelpPopover route="/properties" size={18} /></div>
 
       <Card>
         <CardHeader><CardTitle>Properties</CardTitle></CardHeader>

@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
@@ -273,7 +274,7 @@ export default function UploadData() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Upload Data</h1>
+      <div className="flex items-center gap-2"><h1 className="text-3xl font-bold">Upload Data</h1><HelpPopover route="/upload" size={18} /></div>
       <p className="text-muted-foreground">
         Import data from BDO Bank Control Excel workbooks. Each file contains multiple sheets — select which data type to import.
       </p>

@@ -10,6 +10,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { api, getApiBase } from "@/lib/api";
 import { Database, Download, Upload, RefreshCw, Trash2, HardDrive } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type Scope = "landco" | "cash" | "complete";
 
@@ -344,7 +345,7 @@ export default function DatabaseBackup() {
         <div className="flex items-center gap-3">
           <Database className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Database Backup</h1>
+            <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Database Backup</h1><HelpPopover route="/database-backup" size={18} /></div>
             <p className="text-sm text-muted-foreground">
               Create or restore PostgreSQL backups for Landco accounting, Cash Control, or the complete database — to local storage or a connected USB drive.
             </p>

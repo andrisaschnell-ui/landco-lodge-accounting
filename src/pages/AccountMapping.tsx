@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Edit2, Trash2, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { HelpPopover } from "@/components/HelpPopover";
 
 export default function AccountMapping() {
   const { toast } = useToast();
@@ -115,7 +116,7 @@ export default function AccountMapping() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Expense Mapping Dictionary</h1>
+          <div className="flex items-center gap-2"><h1 className="text-3xl font-bold">Expense Mapping Dictionary</h1><HelpPopover route="/accounting/mapping" size={18} /></div>
           <p className="text-muted-foreground">Manage and translate Portuguese-to-English expense categories.</p>
         </div>
         <div className="flex gap-4">

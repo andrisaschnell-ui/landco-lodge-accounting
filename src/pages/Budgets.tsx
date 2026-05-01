@@ -11,13 +11,14 @@ import { Loader2, Save, FileDown, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { loadAccounts, loadAggregates, balanceFor, AccountRow, fmtMoney, firstDay, lastDay } from "@/lib/statements";
 import { exportToPdf, exportToExcel, Column } from "@/lib/exportUtils";
+import { HelpPopover } from "@/components/HelpPopover";
 
 const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export default function Budgets() {
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Budgets</h1>
+      <div className="flex items-center gap-2"><h1 className="text-3xl font-bold tracking-tight">Budgets</h1><HelpPopover route="/accounting/budgets" size={18} /></div>
       <Tabs defaultValue="entry">
         <TabsList>
           <TabsTrigger value="entry">Budget Entry</TabsTrigger>

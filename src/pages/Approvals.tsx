@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Check, X } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 2 }).format(n || 0);
 
@@ -43,7 +44,7 @@ export default function Approvals() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-bold">Approval Queue</h1>
+      <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Approval Queue</h1><HelpPopover route="/accounting/approvals" size={18} /></div>
       <Card>
         <CardHeader>
           <CardTitle>Pending expenses (≥ MZN {fmt(threshold)}) — {items.length} item(s)</CardTitle>

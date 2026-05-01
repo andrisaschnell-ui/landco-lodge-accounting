@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Eye } from "lucide-react";
+import { HelpPopover } from "@/components/HelpPopover";
 
 type Row = {
   id: number; occurred_at: string; actor_email: string | null;
@@ -49,7 +50,7 @@ export default function AuditLog() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-bold">Audit Log</h1>
+      <div className="flex items-center gap-2"><h1 className="text-2xl font-bold">Audit Log</h1><HelpPopover route="/accounting/audit-log" size={18} /></div>
       <Card>
         <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
