@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SidebarModeIndicator } from "@/components/SidebarModeIndicator";
 import { SyncPanel } from "@/components/SyncPanel";
+import { HelpPopover } from "@/components/HelpPopover";
+import { helpContent } from "@/lib/helpContent";
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
