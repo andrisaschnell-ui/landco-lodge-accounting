@@ -15,6 +15,8 @@ import { parsePettyCash } from "@/lib/parsers/pettyCashParser";
 import { parseExpenses } from "@/lib/parsers/expensesParser";
 import { parseInvoices } from "@/lib/parsers/invoicesParser";
 import { parseCashControlZip } from "@/lib/parsers/cashControlParser";
+import { parseLandcoIncome } from "@/lib/parsers/landcoIncomeParser";
+import { parseShareholderWorkbook } from "@/lib/parsers/shareholderParser";
 import {
   importSalary,
   importBimTransfers,
@@ -23,6 +25,8 @@ import {
   importPettyCash,
   importExpenses,
   importInvoices,
+  importLandcoIncome,
+  importShareholderBalances,
   DuplicateMonthError,
 } from "@/lib/importService";
 import { importCashControl } from "@/lib/cashControlImport";
@@ -37,7 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip";
+type FileType = "salary" | "bim_transfer" | "month_end" | "petty_cash" | "bdo_bank" | "expenses" | "invoices" | "cash_control_zip" | "landco_income" | "shareholder";
 type UploadStatus = "idle" | "parsed" | "importing" | "success" | "error";
 
 interface UploadState {
@@ -50,6 +54,7 @@ interface UploadState {
 
 const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string }[] = [
   { value: "invoices", label: "Sales Invoices", desc: "Invoices issued (sales) from the Invoices sheet", sheet: "Invoices" },
+  { value: "landco_income", label: "Landco Income (INCOME sheet)", desc: "Owner-linked lodge income deposits from the INCOME sheet", sheet: "INCOME" },
   { value: "expenses", label: "Expenses (Monthly)", desc: "Per-line expenses from MONTH END workbook — header on row 6 of the EXPENSES sheet", sheet: "EXPENSES (MONTH END workbook)" },
   { value: "month_end", label: "Month End (Invoices & Creditors)", desc: "Income from Invoices sheet, expenses from Creditors sheet", sheet: "Invoices + Creditors" },
   { value: "salary", label: "Salary Sheet (Folha de Salarios)", desc: "Employee salary data from Folha de salarios sheet", sheet: "Folha de salarios" },
@@ -57,6 +62,7 @@ const FILE_TYPES: { value: FileType; label: string; desc: string; sheet: string 
   { value: "bdo_bank", label: "BIM Bank Control", desc: "Bank transactions from BIM Bank Control MZN + USD sheets", sheet: "BIM Bank Control Mtn + USD" },
   { value: "petty_cash", label: "Petty Cash + Pre-paid", desc: "Cash transactions from Petty cash and Pre-paid sheets — booked to Suspense for review", sheet: "Petty cash + Pre-paid" },
   { value: "cash_control_zip", label: "Cash Control (ZIP) — Petty Cash / Emola / Mpesa", desc: "Personal notebook: upload Money_Box.zip containing Money Box (Petty Cash), Emola, and/or Mpesa workbooks. Isolated from accounting.", sheet: "Money Box + Emola + Mpesa" },
+  { value: "shareholder", label: "Shareholder Workbook", desc: "Individual owner balances from the SUMMERY sheet", sheet: "SUMMERY" },
 ];
 
 const MONTHS = [
@@ -123,6 +129,18 @@ export default function UploadData() {
           }
           break;
         }
+        case "landco_income": {
+          const result = parseLandcoIncome(buffer, m, y);
+          count = result.records.length;
+          const previewRows = result.records
+            .slice(0, 6)
+            .map((record) => `${record.transactionDate} ${record.propertyCode} ${record.description} — MZN ${record.totalMzn.toLocaleString()} / USD ${record.amountUsd.toLocaleString()}`);
+          preview = `Parsed ${result.records.length} income rows from the INCOME sheet.\n\n${previewRows.join("\n")}`;
+          if (result.warnings.length > 0) {
+            preview += `\n\nWarnings:\n${result.warnings.slice(0, 8).map((warning) => `  - ${warning}`).join("\n")}`;
+          }
+          break;
+        }
         case "bdo_bank": {
           const result = parseBdoBank(buffer, m, y);
           count = result.transactions.length;
@@ -173,6 +191,17 @@ export default function UploadData() {
             .slice(0, 8)
             .map((i) => `  ${i.date} INV#${i.invoice_no} ${i.description} — ${i.total_mzn.toLocaleString()} MZN`)
             .join("\n");
+          break;
+        }
+        case "shareholder": {
+          const result = parseShareholderWorkbook(buffer, m, y, file.name);
+          count = result.balances.length;
+          const b = result.balances[0];
+          preview = `Shareholder: ${b.shareholder_name}\nProperty: ${b.property_code}\nPeriod: ${b.month}/${b.year}\n\n`;
+          preview += `Opening Balance: ${b.opening_balance.toLocaleString()} MZN\n`;
+          preview += `Income: ${b.income.toLocaleString()} MZN\n`;
+          preview += `Expenses: ${b.expenses.toLocaleString()} MZN\n`;
+          preview += `Closing Balance: ${b.closing_balance.toLocaleString()} MZN\n`;
           break;
         }
         case "cash_control_zip": {
@@ -230,6 +259,9 @@ export default function UploadData() {
         case "month_end":
           imported = await importMonthEnd(parseMonthEnd(buffer, m, y), state.file.name);
           break;
+        case "landco_income":
+          imported = await importLandcoIncome(parseLandcoIncome(buffer, m, y), state.file.name);
+          break;
         case "bdo_bank":
           imported = await importBdoBank(parseBdoBank(buffer, m, y), state.file.name);
           break;
@@ -241,6 +273,9 @@ export default function UploadData() {
           break;
         case "invoices":
           imported = await importInvoices(parseInvoices(buffer, m, y), state.file.name);
+          break;
+        case "shareholder":
+          imported = await importShareholderBalances(parseShareholderWorkbook(buffer, m, y, state.file.name), state.file.name);
           break;
         case "cash_control_zip": {
           const res = await parseCashControlZip(buffer, y);

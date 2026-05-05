@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ export default function BankReconciliation() {
   const { toast } = useToast();
 
   useEffect(() => {
-    supabase.from("bank_accounts").select("id,name,bank_name").then(({ data }) => {
+    db.from("bank_accounts").select("id,name,bank_name").then(({ data }) => {
       setBanks(data || []);
       if (data?.[0]) setBankId(data[0].id);
     });
@@ -39,7 +39,7 @@ export default function BankReconciliation() {
 
   async function loadTxs() {
     if (!bankId) return;
-    const { data } = await supabase
+    const { data } = await db
       .from("bank_transactions")
       .select("id,date,description,debit,credit,reconciled,matched_je_id")
       .eq("bank_account_id", bankId).eq("year", year).eq("month", month)
@@ -73,21 +73,20 @@ export default function BankReconciliation() {
   async function saveReconciliation() {
     if (!bankId) return;
     // Header
-    const { data: rec, error } = await supabase
+    const { data: rec, error } = await db
       .from("bank_reconciliations")
       .upsert({
         bank_account_id: bankId, year, month,
         statement_balance: statementBalance, book_balance: bookBalance,
         status: Math.abs(difference) < 0.01 ? "reconciled" : "open",
         reconciled_at: Math.abs(difference) < 0.01 ? new Date().toISOString() : null,
-      } as any, { onConflict: "bank_account_id,year,month" })
-      .select().single();
+      } as any, { onConflict: "bank_account_id,year,month" });
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
 
     // Mark selected txs as reconciled
     const ids = [...selected];
     if (ids.length) {
-      await supabase.from("bank_transactions").update({
+      await db.from("bank_transactions").update({
         reconciled: true, reconciliation_id: (rec as any).id,
       }).in("id", ids);
     }

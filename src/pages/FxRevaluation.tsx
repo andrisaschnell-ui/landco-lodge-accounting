@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 2 }).format(n || 0);
 
@@ -27,13 +28,13 @@ export default function FxRevaluation() {
   const { toast } = useToast();
 
   async function loadHistory() {
-    const { data } = await supabase.from("fx_revaluations").select("*").order("year", { ascending: false }).order("month", { ascending: false });
+    const { data } = await db.from("fx_revaluations").select("*").order("year", { ascending: false }).order("month", { ascending: false });
     setHistory((data as Reval[]) || []);
   }
   useEffect(() => { loadHistory(); }, []);
 
   async function loadRate() {
-    const { data } = await supabase.from("exchange_rates").select("*").eq("year", year).eq("month", month).maybeSingle();
+    const { data } = await db.from("exchange_rates").select("*").eq("year", year).eq("month", month).maybeSingle();
     if (!data) { setRate(0); return toast({ title: "No rate", description: `No exchange rate for ${year}-${month}`, variant: "destructive" }); }
     setRate(currency === "USD" ? data.mzn_per_usd : (data.mzn_per_zar || 0));
   }
@@ -45,7 +46,7 @@ export default function FxRevaluation() {
     const cashCode = currency === "USD" ? "1112" : "1113"; // FX cash sub-accounts (or fall to suspense)
     const accId = await supabase.rpc("fn_account_or_suspense", { _code: acctCode });
     const cashId = await supabase.rpc("fn_account_or_suspense", { _code: cashCode });
-    const { data: je, error } = await supabase.from("journal_entries").insert({
+    const { data: je, error } = await db.from("journal_entries").insert({
       entry_date: `${year}-${String(month).padStart(2, "0")}-28`,
       description: `FX revaluation ${currency} @ ${rate}`,
       entry_type: "fx_revaluation", reference: `${year}-${month}-${currency}`,
@@ -60,10 +61,10 @@ export default function FxRevaluation() {
          { journal_entry_id: je.id, account_id: accId.data, debit: 0, credit: amt, memo: "FX gain" }]
       : [{ journal_entry_id: je.id, account_id: accId.data, debit: amt, credit: 0, memo: "FX loss" },
          { journal_entry_id: je.id, account_id: cashId.data, debit: 0, credit: amt, memo: "FX loss on cash" }];
-    const { error: lineErr } = await supabase.from("journal_lines").insert(lines);
+    const { error: lineErr } = await db.from("journal_lines").insert(lines);
     if (lineErr) return toast({ title: "Lines failed", description: lineErr.message, variant: "destructive" });
 
-    await supabase.from("fx_revaluations").upsert({
+    await db.from("fx_revaluations").upsert({
       year, month, currency, rate_used: rate, total_adjustment: adjustment,
       journal_entry_id: je.id, posted: true, posted_at: new Date().toISOString(),
     } as any, { onConflict: "year,month,currency" });

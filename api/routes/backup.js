@@ -34,7 +34,7 @@ const SCOPES = {
     tables: [
       "accounts","accounting_periods","journal_entries","journal_lines",
       "invoices","expense_categories","expense_transactions",
-      "income_transactions","properties","shareholders","shareholder_balances",
+      "income_transactions","landco_income","properties","shareholders","shareholder_balances",
       "employees","salary_runs","salary_lines","salary_advances",
       "bim_salary_transfers","inss_payments","irps_payments",
       "bank_accounts","bank_opening_balances","bank_transactions",

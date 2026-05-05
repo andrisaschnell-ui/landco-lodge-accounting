@@ -4,6 +4,9 @@ export interface ParsedSalaryLine {
   employee_name: string;
   house_code: string;
   category: string;
+  nuit: string;
+  engagement_date: string | null;
+  discharge_date: string | null;
   base_salary: number;
   food_allowance: number;
   back_payment: number;
@@ -15,6 +18,7 @@ export interface ParsedSalaryLine {
   overtime_15x_amount: number;
   overtime_2x_hours: number;
   overtime_2x_amount: number;
+  premios: number;
   gratification: number;
   holiday_days: number;
   holiday_amount: number;
@@ -43,9 +47,21 @@ const num = (v: unknown): number => {
 
 const str = (v: unknown): string => (v == null ? '' : String(v).trim());
 
+const date = (v: unknown): string | null => {
+  if (v == null || v === '' || v === 'null') return null;
+  // If it's a number (Excel date)
+  if (typeof v === 'number') {
+    const d = new Date((v - 25569) * 86400 * 1000);
+    return d.toISOString().split('T')[0];
+  }
+  // If it's a string, try to parse it
+  const s = String(v).trim();
+  if (!s || s.toLowerCase() === 'engagement date' || s.toLowerCase() === 'discharge date') return null;
+  return s;
+};
+
 function findSheet(wb: XLSX.WorkBook, candidates: string[]): XLSX.WorkSheet | null {
   for (const name of candidates) {
-    // Try exact match, then case-insensitive, then partial match
     if (wb.Sheets[name]) return wb.Sheets[name];
     const lower = name.toLowerCase();
     const match = wb.SheetNames.find(
@@ -53,7 +69,6 @@ function findSheet(wb: XLSX.WorkBook, candidates: string[]): XLSX.WorkSheet | nu
     );
     if (match) return wb.Sheets[match];
   }
-  // Partial match
   for (const name of candidates) {
     const lower = name.toLowerCase();
     const match = wb.SheetNames.find((s) => s.toLowerCase().includes(lower));
@@ -65,13 +80,11 @@ function findSheet(wb: XLSX.WorkBook, candidates: string[]): XLSX.WorkSheet | nu
 export function parseSalarySheet(file: ArrayBuffer, month: number, year: number): ParsedSalaryResult {
   const wb = XLSX.read(file, { type: 'array' });
 
-  // Target the "Folha de salarios" sheet specifically
   const ws = findSheet(wb, ['Folha de salarios', 'Folha de Salarios', 'FOLHA DE SALARIOS', 'Folha']);
   if (!ws) throw new Error('Could not find "Folha de salarios" sheet in this workbook');
 
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-  // Find header row (row with "NO" in col A and "NOME DO TRABALHADOR" somewhere)
   let headerIdx = -1;
   for (let i = 0; i < Math.min(rows.length, 15); i++) {
     const r = rows[i];
@@ -85,7 +98,6 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
   }
   if (headerIdx === -1) throw new Error('Could not find salary header row (NO / NOME DO TRABALHADOR)');
 
-  // Data starts 2 rows after header (skip sub-header row with column names)
   const dataStart = headerIdx + 2;
   const lines: ParsedSalaryLine[] = [];
 
@@ -94,22 +106,15 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
     if (!row) continue;
     const no = num(row[0]);
     const name = str(row[2]);
-    if (!no || !name) continue; // skip non-employee rows (totals, blanks)
-
-    // Column mapping from "Folha de salarios" layout:
-    // 0:NO, 1:house_code, 2:NAME, 3:EngDate, 4:DisDate, 5:NUIT, 6:CATEGORIA
-    // 7:Salario Base, 8:(adjusted sal), 9:ALIMENTACAO, 10:BackPayment
-    // 11:DIAS, 12:SALARIO MENSAL, 13:NIGHTSHIFT, 14:25% GUARDAS
-    // 15:HORAS 1.5, 16:VALOR 1.5, 17:HORAS 2, 18:VALOR 2
-    // 19:PREMIOS, 20:GRATIFICACOES, 21:DIAS FERIAS, 22:FERIA MONTANTE
-    // 23:Total Remuneração, 24:Advance, 25:IRPS, 26:DIVIDA
-    // 27:INSS, 28:SIND, 29:TOTAL DEDUCTIONS, 30:SALARIO LIQUIDO
-    // 31:NIB(ARREDONDAMENTO column holds NIB numbers)
+    if (!no || !name) continue; 
 
     const line: ParsedSalaryLine = {
       employee_name: name,
       house_code: str(row[1]),
       category: str(row[6]),
+      nuit: str(row[5]),
+      engagement_date: date(row[3]),
+      discharge_date: date(row[4]),
       base_salary: num(row[7]),
       food_allowance: num(row[9]),
       back_payment: num(row[10]),
@@ -121,6 +126,7 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
       overtime_15x_amount: num(row[16]),
       overtime_2x_hours: num(row[17]),
       overtime_2x_amount: num(row[18]),
+      premios: num(row[19]),
       gratification: num(row[20]),
       holiday_days: num(row[21]),
       holiday_amount: num(row[22]),
@@ -135,7 +141,6 @@ export function parseSalarySheet(file: ArrayBuffer, month: number, year: number)
       nib: str(row[31]),
     };
 
-    // If net_salary is 0 but gross/deductions exist, calculate it
     if (line.net_salary === 0 && line.gross_total > 0) {
       line.net_salary = line.gross_total - line.total_deductions;
     }

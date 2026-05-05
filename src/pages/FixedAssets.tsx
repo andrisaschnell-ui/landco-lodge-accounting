@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Calculator, Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Asset = {
   id: string; asset_code: string; name: string; category: string;
@@ -39,8 +40,8 @@ export default function FixedAssets() {
   const load = async () => {
     setLoading(true);
     const [{ data: a }, { data: p }] = await Promise.all([
-      supabase.from("fixed_assets").select("*").order("asset_code"),
-      supabase.from("properties").select("id,name"),
+      db.from("fixed_assets").select("*").order("asset_code"),
+      db.from("properties").select("id,name"),
     ]);
     setAssets((a as Asset[]) || []);
     setProperties(p || []);
@@ -50,7 +51,7 @@ export default function FixedAssets() {
 
   async function save() {
     const payload: any = { ...form };
-    const { data, error } = await supabase.from("fixed_assets").insert(payload).select().single();
+    const { data, error } = await db.from("fixed_assets").insert(payload).select().single();
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
     // generate schedule
     await supabase.rpc("fn_generate_depreciation_schedule", { _asset_id: data.id });

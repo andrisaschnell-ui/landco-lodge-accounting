@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,8 +22,8 @@ export default function CashControlReports() {
 
   useEffect(() => {
     (async () => {
-      const { data: f } = await supabase.from("cash_transactions").select("funder").not("funder", "is", null);
-      const { data: r } = await supabase.from("cash_transactions").select("receiver").not("receiver", "is", null);
+      const { data: f } = await db.from("cash_transactions").select("funder").not("funder", "is", null);
+      const { data: r } = await db.from("cash_transactions").select("receiver").not("receiver", "is", null);
       setOptions({
         funders: (Array.from(new Set((f ?? []).map((x: any) => x.funder).filter((v: any): v is string => !!v))) as string[]).sort(),
         receivers: (Array.from(new Set((r ?? []).map((x: any) => x.receiver).filter((v: any): v is string => !!v))) as string[]).sort(),
@@ -33,7 +33,7 @@ export default function CashControlReports() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("cash_transactions").select("*").order("tx_date", { ascending: true });
+      const { data } = await db.from("cash_transactions").select("*").order("tx_date", { ascending: true });
       setAllTx((data ?? []) as TxRow[]);
     })();
   }, []);

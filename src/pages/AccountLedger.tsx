@@ -18,7 +18,7 @@ export default function AccountLedger() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("accounts").select("id, code, name, normal_side").order("code");
+      const { data } = await db.from("accounts").select("id, code, name, normal_side").order("code");
       setAccounts(data || []);
     })();
   }, []);

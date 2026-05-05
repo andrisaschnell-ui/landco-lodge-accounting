@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import type { ParsedSalaryResult } from "./parsers/salaryParser";
 import type { ParsedBimResult } from "./parsers/bimTransferParser";
 import type { ParsedMonthEndResult } from "./parsers/monthEndParser";
@@ -6,20 +6,44 @@ import type { ParsedBdoResult } from "./parsers/bdoBankParser";
 import type { ParsedPettyCashResult } from "./parsers/pettyCashParser";
 import type { ParsedExpensesResult } from "./parsers/expensesParser";
 import type { ParsedInvoicesResult } from "./parsers/invoicesParser";
+import type { ParsedLandcoIncomeResult } from "./parsers/landcoIncomeParser";
+import type { ParsedShareholderResult } from "./parsers/shareholderParser";
+import { supabase } from "@/integrations/supabase/client";
 
 // Properties we never write expenses against (excluded by business rule).
 const EXCLUDED_PROPERTY_CODES = new Set(["NEGU"]);
 
+interface EmployeeRecord {
+  id: string;
+  name: string;
+  nuit: string | null;
+  engagement_date: string | null;
+  discharge_date: string | null;
+  category: string | null;
+}
+
+async function getEmployeeData(): Promise<{ byName: Map<string, EmployeeRecord>, byNuit: Map<string, EmployeeRecord> }> {
+  const { data } = await db.from("employees").select("id, name, nuit, engagement_date, discharge_date, category");
+  const byName = new Map<string, EmployeeRecord>();
+  const byNuit = new Map<string, EmployeeRecord>();
+  
+  data?.forEach((e) => {
+    const record = { ...e };
+    byName.set(e.name.toUpperCase(), record);
+    if (e.nuit) byNuit.set(String(e.nuit).trim(), record);
+  });
+  return { byName, byNuit };
+}
 
 async function getEmployeeMap(): Promise<Map<string, string>> {
-  const { data } = await supabase.from("employees").select("id, name");
+  const { byName } = await getEmployeeData();
   const map = new Map<string, string>();
-  data?.forEach((e) => map.set(e.name.toUpperCase(), e.id));
+  byName.forEach((v, k) => map.set(k, v.id));
   return map;
 }
 
 async function getPropertyMap(): Promise<Map<string, string>> {
-  const { data } = await supabase.from("properties").select("id, code");
+  const { data } = await db.from("properties").select("id, code");
   const map = new Map<string, string>();
   data?.forEach((p) => {
     if (EXCLUDED_PROPERTY_CODES.has(p.code)) return;
@@ -29,14 +53,21 @@ async function getPropertyMap(): Promise<Map<string, string>> {
 }
 
 async function getCategoryMap(): Promise<Map<string, string>> {
-  const { data } = await supabase.from("expense_categories").select("id, name");
+  const { data } = await db.from("expense_categories").select("id, name");
   const map = new Map<string, string>();
   data?.forEach((c) => map.set(c.name.toUpperCase(), c.id));
   return map;
 }
 
+async function getShareholderMap(): Promise<Map<string, string>> {
+  const { data } = await db.from("shareholders").select("id, property_code");
+  const map = new Map<string, string>();
+  data?.forEach((s) => map.set(s.property_code, s.id));
+  return map;
+}
+
 async function getBankAccountMap(): Promise<Map<string, string>> {
-  const { data } = await supabase.from("bank_accounts").select("id, name");
+  const { data } = await db.from("bank_accounts").select("id, name");
   const map = new Map<string, string>();
   data?.forEach((b) => map.set(b.name.toUpperCase(), b.id));
   return map;
@@ -56,14 +87,14 @@ export class DuplicateMonthError extends Error {
 }
 
 export async function deleteSalaryRun(runId: string) {
-  const { error: linesErr } = await supabase.from("salary_lines").delete().eq("salary_run_id", runId);
+  const { error: linesErr } = await db.from("salary_lines").delete().eq("salary_run_id", runId);
   if (linesErr) throw linesErr;
-  const { error: runErr } = await supabase.from("salary_runs").delete().eq("id", runId);
+  const { error: runErr } = await db.from("salary_runs").delete().eq("id", runId);
   if (runErr) throw runErr;
 }
 
 export async function importSalary(result: ParsedSalaryResult, filename: string, opts: { replaceExisting?: boolean } = {}) {
-  const empMap = await getEmployeeMap();
+  const { byName, byNuit } = await getEmployeeData();
 
   // Duplicate check
   const { data: existing } = await supabase
@@ -90,13 +121,36 @@ export async function importSalary(result: ParsedSalaryResult, filename: string,
 
   // Track unmatched employees for debugging
   const unmatched: string[] = [];
+  const updates: { id: string, payload: any }[] = [];
 
   const salaryLines = result.lines.map((l) => {
-    const empId = empMap.get(l.employee_name.toUpperCase());
-    if (!empId) unmatched.push(l.employee_name);
+    // 1. Try matching by NUIT
+    let emp = l.nuit ? byNuit.get(l.nuit) : null;
+    
+    // 2. If no NUIT match, try matching by Name
+    if (!emp) {
+      emp = byName.get(l.employee_name.toUpperCase());
+    }
+
+    if (!emp) {
+      unmatched.push(l.employee_name);
+      return null;
+    }
+
+    // 3. Check for HR data updates (NUIT, Dates, Category)
+    const payload: any = {};
+    if (l.nuit && emp.nuit !== l.nuit) payload.nuit = l.nuit;
+    if (l.category && emp.category !== l.category) payload.category = l.category;
+    if (l.engagement_date && emp.engagement_date !== l.engagement_date) payload.engagement_date = l.engagement_date;
+    if (l.discharge_date && emp.discharge_date !== l.discharge_date) payload.discharge_date = l.discharge_date;
+
+    if (Object.keys(payload).length > 0) {
+      updates.push({ id: emp.id, payload });
+    }
+
     return {
       salary_run_id: run.id,
-      employee_id: empId || null,
+      employee_id: emp.id,
       base_salary: l.base_salary,
       food_allowance: l.food_allowance,
       back_payment: l.back_payment,
@@ -122,13 +176,18 @@ export async function importSalary(result: ParsedSalaryResult, filename: string,
       nib: l.nib,
       category: l.category,
     };
-  }).filter((l) => l.employee_id);
+  }).filter((l): l is NonNullable<typeof l> => l !== null);
+
+  // Sync employee updates
+  for (const update of updates) {
+    await db.from("employees").update(update.payload).eq("id", update.id);
+  }
 
   if (unmatched.length > 0) {
     console.warn(`Salary import: ${unmatched.length} employees not matched:`, unmatched);
   }
 
-  const { error } = await supabase.from("salary_lines").insert(salaryLines);
+  const { error } = await db.from("salary_lines").insert(salaryLines);
   if (error) throw error;
 
   // Update run totals
@@ -138,7 +197,7 @@ export async function importSalary(result: ParsedSalaryResult, filename: string,
     total_irps: salaryLines.reduce((s, l) => s + (l.irps || 0), 0),
     total_inss_employee: salaryLines.reduce((s, l) => s + (l.inss_employee || 0), 0),
   };
-  await supabase.from("salary_runs").update(totals).eq("id", run.id);
+  await db.from("salary_runs").update(totals).eq("id", run.id);
 
   await logImport(filename, "salary", result.month, result.year, salaryLines.length);
   return { imported: salaryLines.length, unmatched };
@@ -157,7 +216,7 @@ export async function importBimTransfers(result: ParsedBimResult, filename: stri
     employee_id: empMap.get(t.name.toUpperCase()) || null,
   }));
 
-  const { error } = await supabase.from("bim_salary_transfers").insert(transfers);
+  const { error } = await db.from("bim_salary_transfers").insert(transfers);
   if (error) throw error;
 
   await logImport(filename, "bim_transfer", result.month, result.year, transfers.length);
@@ -180,7 +239,7 @@ export async function importMonthEnd(result: ParsedMonthEndResult, filename: str
       month: result.month,
       year: result.year,
     }));
-    const { error } = await supabase.from("income_transactions").insert(incRows);
+    const { error } = await db.from("income_transactions").insert(incRows);
     if (error) throw error;
     count += incRows.length;
   }
@@ -197,13 +256,75 @@ export async function importMonthEnd(result: ParsedMonthEndResult, filename: str
       year: result.year,
       category_id: catMap.get(e.category.toUpperCase()) || null,
     }));
-    const { error } = await supabase.from("expense_transactions").insert(expRows);
+    const { error } = await db.from("expense_transactions").insert(expRows);
     if (error) throw error;
     count += expRows.length;
   }
 
   await logImport(filename, "month_end", result.month, result.year, count);
   return count;
+}
+
+export async function importLandcoIncome(result: ParsedLandcoIncomeResult, filename: string) {
+  const propMap = await getPropertyMap();
+  const uniquePeriods = Array.from(
+    new Set(result.records.map((record) => `${record.periodYear}-${record.periodMonth}`)),
+  ).map((key) => {
+    const [year, month] = key.split("-").map(Number);
+    return { year, month };
+  });
+
+  for (const period of uniquePeriods) {
+    await db.from("landco_income").delete().eq("period_year", period.year).eq("period_month", period.month);
+  }
+
+  const { data: rates } = await db.from("exchange_rates").select("*");
+  const rateMap = new Map<string, number>();
+  (rates ?? []).forEach((rate: { year: number; month: number; mzn_per_usd: string | number }) => {
+    rateMap.set(`${rate.year}-${rate.month}`, Number(rate.mzn_per_usd));
+  });
+
+  const rows = result.records.map((record) => {
+    const exchangeRate = record.amountUsd > 0
+      ? record.totalMzn / record.amountUsd
+      : rateMap.get(`${record.periodYear}-${record.periodMonth}`) ?? null;
+    const amountUsd = record.amountUsd > 0
+      ? record.amountUsd
+      : exchangeRate && exchangeRate > 0
+        ? record.totalMzn / exchangeRate
+        : 0;
+
+    return {
+      transaction_date: record.transactionDate,
+      period_month: record.periodMonth,
+      period_year: record.periodYear,
+      property_id: propMap.get(record.propertyCode) || null,
+      property_code: record.propertyCode,
+      house_number: record.houseNumber,
+      description: record.description,
+      accommodation_amount_mzn: record.accommodationAmountMzn,
+      h1_amount_mzn: record.h1AmountMzn,
+      h2_amount_mzn: record.h2AmountMzn,
+      h3_amount_mzn: record.h3AmountMzn,
+      h4_amount_mzn: record.h4AmountMzn,
+      total_mzn: record.totalMzn,
+      amount_usd: amountUsd,
+      exchange_rate_used: exchangeRate,
+      monthly_total_mzn_source: record.monthlyTotalMznSource,
+      source_file: filename,
+      source_sheet: "INCOME",
+      source_row_number: record.sourceRowNumber,
+      import_notes: record.importNotes,
+    };
+  });
+
+  if (rows.length > 0) {
+    const { error } = await db.from("landco_income").insert(rows);
+    if (error) throw error;
+  }
+
+  await logImport(filename, "landco_income", result.month, result.year, rows.length);
+  return rows.length;
 }
 
 /**
@@ -240,7 +361,7 @@ export async function importBdoBank(result: ParsedBdoResult, filename: string) {
   }));
 
   if (rows.length > 0) {
-    const { error } = await supabase.from("bank_transactions").insert(rows);
+    const { error } = await db.from("bank_transactions").insert(rows);
     if (error) throw error;
   }
 
@@ -248,7 +369,7 @@ export async function importBdoBank(result: ParsedBdoResult, filename: string) {
   for (const ob of result.openingBalances) {
     const bankId = ob.currency === "USD" ? bimUsd : bimMzn;
     if (!bankId) continue;
-    await supabase.from("bank_opening_balances").upsert(
+    await db.from("bank_opening_balances").upsert(
       {
         bank_account_id: bankId,
         month: result.month,
@@ -299,7 +420,7 @@ export async function importPettyCash(results: ParsedPettyCashResult[], filename
     }));
 
     if (rows.length > 0) {
-      const { error } = await supabase.from("petty_cash_transactions").insert(rows);
+      const { error } = await db.from("petty_cash_transactions").insert(rows);
       if (error) throw error;
       total += rows.length;
     }
@@ -338,11 +459,11 @@ export async function importInvoices(result: ParsedInvoicesResult, filename: str
   const priorInvIds = (priorInvs ?? []).map((i: { id: string }) => i.id);
 
   if (priorInvIds.length) {
-    await supabase.from("invoices").delete().in("id", priorInvIds);
+    await db.from("invoices").delete().in("id", priorInvIds);
   }
   if (priorJeIds.length) {
-    await supabase.from("journal_lines").delete().in("journal_entry_id", priorJeIds);
-    await supabase.from("journal_entries").delete().in("id", priorJeIds);
+    await db.from("journal_lines").delete().in("journal_entry_id", priorJeIds);
+    await db.from("journal_entries").delete().in("id", priorJeIds);
   }
 
   if (result.invoices.length === 0) {
@@ -386,11 +507,11 @@ export async function importInvoices(result: ParsedInvoicesResult, filename: str
           // No IVA account → roll IVA into sales line so the JE balances.
           jLines[1] = { ...jLines[1], credit: inv.amount_excl_mzn + inv.iva_mzn };
         }
-        await supabase.from("journal_lines").insert(jLines);
+        await db.from("journal_lines").insert(jLines);
       }
     }
 
-    await supabase.from("invoices").insert({
+    await db.from("invoices").insert({
       invoice_number: inv.invoice_no
         ? `IMP ${result.year}/${inv.invoice_no}`
         : `IMP ${result.year}/${result.month}-${inserted + 1}`,
@@ -420,7 +541,7 @@ export async function importInvoices(result: ParsedInvoicesResult, filename: str
 
 async function logImport(filename: string, fileType: string, month: number, year: number, recordsImported: number) {
   const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from("import_log").insert({
+  await db.from("import_log").insert({
     filename,
     file_type: fileType,
     month,
@@ -456,7 +577,7 @@ async function ensureCategories(names: string[]): Promise<Map<string, string>> {
 // Resolve account UUIDs by code (e.g. '262', '221', '6111').
 async function getAccountIdMap(codes: string[]): Promise<Map<string, string>> {
   const unique = Array.from(new Set(codes.filter(Boolean)));
-  const { data } = await supabase.from("accounts").select("id, code").in("code", unique);
+  const { data } = await db.from("accounts").select("id, code").in("code", unique);
   const map = new Map<string, string>();
   data?.forEach((a: { id: string; code: string }) => map.set(a.code, a.id));
   return map;
@@ -465,7 +586,7 @@ async function getAccountIdMap(codes: string[]): Promise<Map<string, string>> {
 // Get-or-create supplier by name (case-insensitive).
 async function ensureSuppliers(names: string[]): Promise<Map<string, string>> {
   const unique = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
-  const { data: existing } = await supabase.from("suppliers").select("id, name");
+  const { data: existing } = await db.from("suppliers").select("id, name");
   const map = new Map<string, string>();
   existing?.forEach((s: { id: string; name: string }) => map.set(s.name.toUpperCase(), s.id));
   const missing = unique.filter((n) => !map.has(n.toUpperCase()));
@@ -505,11 +626,11 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
     .lt("entry_date", monthEndExclusive);
   const priorJeIds = (priorJEs ?? []).map((j: { id: string }) => j.id);
 
-  await supabase.from("expense_transactions").delete().eq("month", result.month).eq("year", result.year);
+  await db.from("expense_transactions").delete().eq("month", result.month).eq("year", result.year);
   if (priorJeIds.length) {
-    await supabase.from("supplier_invoices").delete().in("journal_entry_id", priorJeIds);
-    await supabase.from("journal_lines").delete().in("journal_entry_id", priorJeIds);
-    await supabase.from("journal_entries").delete().in("id", priorJeIds);
+    await db.from("supplier_invoices").delete().in("journal_entry_id", priorJeIds);
+    await db.from("journal_lines").delete().in("journal_entry_id", priorJeIds);
+    await db.from("journal_entries").delete().in("id", priorJeIds);
   }
 
   if (result.lines.length === 0) {
@@ -525,6 +646,30 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
   catRows?.forEach((c: { id: string; pgc_account_code: string | null }) =>
     catCodeById.set(c.id, c.pgc_account_code),
   );
+
+  // Fetch payroll totals for this period to override Excel values if needed
+  const { data: salaryRun } = await supabase
+    .from("salary_runs")
+    .select("id")
+    .eq("month", result.month)
+    .eq("year", result.year)
+    .maybeSingle();
+  
+  const payrollTotals = new Map<string, number>();
+  if (salaryRun) {
+    const { data: lines } = await supabase
+      .from("salary_lines")
+      .select("net_salary, employees(house_assignment)")
+      .eq("salary_run_id", salaryRun.id);
+    
+    lines?.forEach((l: any) => {
+      let house = (l.employees?.house_assignment || "LC").toUpperCase();
+      // Normalize: pick the first one if multiple listed (e.g. H1/H4 -> H1)
+      if (house.includes("/")) house = house.split("/")[0].trim();
+      // Map common variants if needed, else use as-is
+      payrollTotals.set(house, (payrollTotals.get(house) || 0) + Number(l.net_salary || 0));
+    });
+  }
 
   // Resolve all needed account UUIDs (262 suspense + every category Dr code).
   const wantedCodes = new Set<string>(["262"]);
@@ -595,12 +740,12 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
       jLines.push({ journal_entry_id: je.id, account_id: suspenseAccountId, debit: -total, credit: 0, memo: `Suspense reversal` });
     }
     if (jLines.length > 1) {
-      const { error: jlErr } = await supabase.from("journal_lines").insert(jLines);
+      const { error: jlErr } = await db.from("journal_lines").insert(jLines);
       if (jlErr) throw jlErr;
     }
 
     // 3) supplier_invoice header (one per group).
-    await supabase.from("supplier_invoices").insert({
+    await db.from("supplier_invoices").insert({
       supplier_id: supplierId,
       journal_entry_id: je.id,
       invoice_date: date,
@@ -612,18 +757,28 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
     });
 
     // 4) expense_transactions linked to this JE.
-    const expRows = lines.map((l) => ({
-      date,
-      description: l.supplier ? `${l.supplier} — ${l.description}` : l.description,
-      amount_mzn: l.amount_mzn,
-      is_shared: l.is_shared,
-      month: result.month,
-      year: result.year,
-      category_id: catMap.get(l.category.toUpperCase()) || null,
-      property_id: l.property_code ? propMap.get(l.property_code) || null : null,
-      journal_entry_id: je.id,
-    }));
-    const { error: expErr } = await supabase.from("expense_transactions").insert(expRows);
+    const expRows = lines.map((l) => {
+      let finalAmount = l.amount_mzn;
+      if (l.is_salary && salaryRun) {
+        const houseCode = l.property_code || "LC";
+        if (payrollTotals.has(houseCode)) {
+           finalAmount = payrollTotals.get(houseCode)!;
+        }
+      }
+
+      return {
+        date,
+        description: l.supplier ? `${l.supplier} — ${l.description}` : l.description,
+        amount_mzn: finalAmount,
+        is_shared: l.is_shared,
+        month: result.month,
+        year: result.year,
+        category_id: catMap.get(l.category.toUpperCase()) || null,
+        property_id: l.property_code ? propMap.get(l.property_code) || null : null,
+        journal_entry_id: je.id,
+      };
+    });
+    const { error: expErr } = await db.from("expense_transactions").insert(expRows);
     if (expErr) throw expErr;
     inserted += expRows.length;
   }
@@ -632,3 +787,28 @@ export async function importExpenses(result: ParsedExpensesResult, filename: str
   return inserted;
 }
 
+export async function importShareholderBalances(result: ParsedShareholderResult, filename: string) {
+  const propMap = await getPropertyMap();
+  const shMap = await getShareholderMap();
+
+  const rows = result.balances.map((b) => ({
+    shareholder_id: shMap.get(b.property_code) || null,
+    property_id: propMap.get(b.property_code) || null,
+    month: b.month,
+    year: b.year,
+    opening_balance: b.opening_balance,
+    income: b.income,
+    expenses: b.expenses,
+    closing_balance: b.closing_balance,
+  }));
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from("shareholder_balances").upsert(rows, {
+      onConflict: "shareholder_id,property_id,month,year",
+    });
+    if (error) throw error;
+  }
+
+  await logImport(filename, "shareholder_balance", result.month, result.year, rows.length);
+  return rows.length;
+}

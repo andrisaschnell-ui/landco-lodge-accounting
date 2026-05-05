@@ -19,7 +19,7 @@ services:
     environment:
       # REQUIRED for "Push Local → Cloud" sync. Paste your Supabase service-role
       # key here, or set it via shell env before `docker compose up`.
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYWt4ZWh1b25zcmx2anJ4aG5kIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzM4NzIzNSwiZXhwIjoyMDkyOTYzMjM1fQ.QrKgiXPFk4PVifXShgpm6i1wkrcxhLLei4pjzkGDoV4
       - SUPABASE_URL=https://neakxehuonsrlvjrxhnd.supabase.co
       - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lYWt4ZWh1b25zcmx2anJ4aG5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODcyMzUsImV4cCI6MjA5Mjk2MzIzNX0.m9cL7bDv5jRFjBqmzxOYLus36ptEoY-BVdY7ohncMhg
     # Bind on 0.0.0.0 (default) so other LAN computers can reach :4000.

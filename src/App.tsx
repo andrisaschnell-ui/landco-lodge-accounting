@@ -19,11 +19,13 @@ import Reports from "./pages/Reports";
 import ShareholderDetail from "./pages/ShareholderDetail";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import JournalEntries from "./pages/JournalEntries";
+import Income from "./pages/Income";
 import Invoices from "./pages/Invoices";
 import ExpensePayments from "./pages/ExpensePayments";
 import AccountMapping from "./pages/AccountMapping";
 import FinancialReports from "./pages/FinancialReports";
 import ShareholderReports from "./pages/ShareholderReports";
+import OwnerMonthlySheets from "./pages/OwnerMonthlySheets";
 import SuspenseReview from "./pages/SuspenseReview";
 import CashControl from "./pages/CashControl";
 import CashControlDisplay from "./pages/CashControlDisplay";
@@ -102,12 +104,14 @@ const App = () => (
                 <Route path="/upload" element={<UploadData />} />
                 <Route path="/accounting/accounts" element={<ChartOfAccounts />} />
                 <Route path="/accounting/journal" element={<JournalEntries />} />
+                <Route path="/accounting/income" element={<Income />} />
                 <Route path="/accounting/invoices" element={<Invoices />} />
                 <Route path="/accounting/mapping" element={<AccountMapping />} />
                 <Route path="/accounting/expense-payments" element={<ExpensePayments />} />
                 <Route path="/accounting/suspense" element={<SuspenseReview />} />
                 <Route path="/accounting/reports" element={<FinancialReports />} />
                 <Route path="/accounting/shareholders" element={<ShareholderReports />} />
+                <Route path="/accounting/owner-monthly" element={<OwnerMonthlySheets />} />
                 <Route path="/accounting/trial-balance" element={<TrialBalance />} />
                 <Route path="/accounting/ledger" element={<AccountLedger />} />
                 <Route path="/accounting/periods" element={<AccountingPeriods />} />

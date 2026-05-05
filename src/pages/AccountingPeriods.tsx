@@ -21,7 +21,7 @@ export default function AccountingPeriods() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("accounting_periods").select("*").eq("year", year).order("month");
+    const { data } = await db.from("accounting_periods").select("*").eq("year", year).order("month");
     setPeriods(data || []);
     setLoading(false);
   };

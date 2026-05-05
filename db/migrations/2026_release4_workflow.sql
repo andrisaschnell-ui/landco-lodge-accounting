@@ -208,6 +208,33 @@ CREATE TABLE IF NOT EXISTS public.document_attachments (
 CREATE INDEX IF NOT EXISTS idx_doc_attachments_source ON public.document_attachments(source_table, source_id);
 
 -- ---------- 6. APPROVAL WORKFLOW -------------------------------------
+CREATE TABLE IF NOT EXISTS public.company_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  singleton boolean NOT NULL DEFAULT true UNIQUE,
+  name text NOT NULL DEFAULT 'Landco Lda',
+  nuit text,
+  address text,
+  logo_url text,
+  currency text NOT NULL DEFAULT 'MZN',
+  vat_rate numeric NOT NULL DEFAULT 16,
+  invoice_series_prefix text NOT NULL DEFAULT 'FT',
+  fiscal_year_start_month integer NOT NULL DEFAULT 1 CHECK (fiscal_year_start_month BETWEEN 1 AND 12),
+  primary_color text NOT NULL DEFAULT '142 71% 45%',
+  accent_color text NOT NULL DEFAULT '210 40% 50%',
+  backup_folder_path text,
+  sync_target_ref text,
+  default_property_id uuid,
+  default_shareholder_id uuid,
+  updated_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT singleton_true CHECK (singleton = true)
+);
+
+INSERT INTO public.company_settings (name, address, currency, vat_rate, invoice_series_prefix)
+SELECT 'Landco Lda', 'Vilanculos, Mozambique', 'MZN', 16, 'FT'
+WHERE NOT EXISTS (SELECT 1 FROM public.company_settings);
+
 ALTER TABLE public.expense_transactions
   ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'approved',
   ADD COLUMN IF NOT EXISTS approved_by uuid,

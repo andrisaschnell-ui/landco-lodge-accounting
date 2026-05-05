@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,7 +12,7 @@ export default function Transactions() {
   const { data: income } = useQuery({
     queryKey: ["income-transactions"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("income_transactions")
         .select("*, properties(name, code), invoices(id, invoice_number, status)")
         .order("date", { ascending: false });
@@ -23,7 +23,7 @@ export default function Transactions() {
   const { data: invoiceIncome } = useQuery({
     queryKey: ["invoice-income"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("invoices")
         .select("id, invoice_number, invoice_date, client_name, subtotal_mzn, vat_amount_mzn, total_mzn, status")
         .order("invoice_date", { ascending: false });
@@ -34,7 +34,7 @@ export default function Transactions() {
   const { data: expenses } = useQuery({
     queryKey: ["expense-transactions"],
     queryFn: async () => {
-      const { data } = await supabase.from("expense_transactions").select("*, properties(name), expense_categories(name), shareholders(name)").order("date", { ascending: false });
+      const { data } = await db.from("expense_transactions").select("*, properties(name), expense_categories(name), shareholders(name)").order("date", { ascending: false });
       return data ?? [];
     },
   });
@@ -42,7 +42,7 @@ export default function Transactions() {
   const { data: bankTx } = useQuery({
     queryKey: ["bank-transactions"],
     queryFn: async () => {
-      const { data } = await supabase.from("bank_transactions").select("*, bank_accounts(name, currency)").order("date", { ascending: false });
+      const { data } = await db.from("bank_transactions").select("*, bank_accounts(name, currency)").order("date", { ascending: false });
       return data ?? [];
     },
   });
@@ -50,7 +50,7 @@ export default function Transactions() {
   const { data: pettyCash } = useQuery({
     queryKey: ["petty-cash"],
     queryFn: async () => {
-      const { data } = await supabase.from("petty_cash_transactions").select("*").order("date", { ascending: false });
+      const { data } = await db.from("petty_cash_transactions").select("*").order("date", { ascending: false });
       return data ?? [];
     },
   });
@@ -58,7 +58,7 @@ export default function Transactions() {
   const { data: openingBalances } = useQuery({
     queryKey: ["bank-opening-balances"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("bank_opening_balances")
         .select("*, bank_accounts(name, currency)")
         .order("year", { ascending: false })

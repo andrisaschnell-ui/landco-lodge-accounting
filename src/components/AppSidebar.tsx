@@ -6,6 +6,7 @@ import {
   Scale, BookOpenCheck, CalendarClock as CalendarLock,
   TrendingUp, Target, UserCheck,
   Package, Boxes, BookCheck, Coins, ShieldCheck, History,
+  Landmark,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { SidebarModeIndicator } from "@/components/SidebarModeIndicator";
 import { SyncPanel } from "@/components/SyncPanel";
@@ -36,6 +37,7 @@ const mainItems = [
 const accountingItems = [
   { title: "Chart of Accounts", url: "/accounting/accounts", icon: BookOpen },
   { title: "Journal Entries", url: "/accounting/journal", icon: FileText },
+  { title: "Landco Income", url: "/accounting/income", icon: Landmark },
   { title: "Account Ledger", url: "/accounting/ledger", icon: BookOpenCheck },
   { title: "Trial Balance", url: "/accounting/trial-balance", icon: Scale },
   { title: "Invoices", url: "/accounting/invoices", icon: ReceiptText },
@@ -78,7 +80,7 @@ export function AppSidebar() {
     (async () => {
       const uid = (user as any)?.id;
       if (!uid) { setIsAdmin(false); return; }
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      const { data } = await db.from("user_roles").select("role").eq("user_id", uid);
       setIsAdmin(!!data?.some((r: any) => r.role === "admin"));
     })();
   }, [user]);

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 
 export interface CompanySettings {
   id: string;
@@ -47,7 +47,7 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("company_settings")
       .select("*")
       .limit(1)
@@ -61,12 +61,12 @@ export function CompanySettingsProvider({ children }: { children: ReactNode }) {
 
   const update = useCallback(async (patch: Partial<CompanySettings>) => {
     if (!settings) return { error: "No settings loaded" };
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("company_settings")
       .update(patch)
       .eq("id", settings.id)
-      .select()
-      .single();
+      .then((row: CompanySettings) => ({ data: row, error: null }))
+      .catch((err: Error) => ({ data: null, error: err }));
     if (error) return { error: error.message };
     setSettings(data as CompanySettings);
     applyTheme(data as CompanySettings);

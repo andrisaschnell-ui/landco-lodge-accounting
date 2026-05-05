@@ -32,7 +32,7 @@ export default function FinancialStatements() {
   useEffect(() => {
     (async () => {
       const [{ data: props }, accts] = await Promise.all([
-        supabase.from("properties").select("id, code, name").order("code"),
+        db.from("properties").select("id, code, name").order("code"),
         loadAccounts(),
       ]);
       setProperties(props || []);

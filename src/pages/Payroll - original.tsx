@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ export default function Payroll() {
   const { data: salaryRuns } = useQuery({
     queryKey: ["salary-runs"],
     queryFn: async () => {
-      const { data } = await supabase.from("salary_runs").select("*").order("year", { ascending: false }).order("month", { ascending: false });
+      const { data } = await db.from("salary_runs").select("*").order("year", { ascending: false }).order("month", { ascending: false });
       return data ?? [];
     },
   });
@@ -22,7 +22,7 @@ export default function Payroll() {
   const { data: salaryLines } = useQuery({
     queryKey: ["salary-lines"],
     queryFn: async () => {
-      const { data } = await supabase.from("salary_lines").select("*, employees(name, house_assignment)").order("created_at");
+      const { data } = await db.from("salary_lines").select("*, employees(name, house_assignment)").order("created_at");
       return data ?? [];
     },
   });

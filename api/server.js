@@ -16,7 +16,11 @@ import backupRoutes from './routes/backup.js';
 import syncRoutes from './routes/sync.js';
 import { POSTERS, linkSourceToEntry } from './lib/autoPost.js';
 
-const { Pool } = pkg;
+const { Pool, types } = pkg;
+// Force DATE (OID 1082) to be returned as a string (YYYY-MM-DD) instead of a JS Date object.
+// This prevents serialization to ISO strings which break HTML5 date inputs.
+types.setTypeParser(1082, (val) => val);
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const JWT = process.env.JWT_SECRET || "dev-secret";
 
@@ -28,9 +32,10 @@ app.use(express.json({ limit: "20mb" }));
 const TABLES = new Set([
   "properties","shareholders","bank_accounts","expense_categories",
   "employees","exchange_rates","income_transactions","expense_transactions",
-  "bank_transactions","petty_cash_transactions","salary_runs","salary_lines",
+  "bank_transactions","bank_opening_balances","petty_cash_transactions","salary_runs","salary_lines",
   "salary_advances","bim_salary_transfers","inss_payments","irps_payments",
   "shareholder_balances","import_log","profiles","user_roles",
+  "landco_income",
   // Accounting Upgrade Tables
   "accounts", "accounting_periods",
   // Cash Control (isolated notebook)
@@ -42,6 +47,10 @@ const TABLES = new Set([
   "inventory_items","inventory_movements",
   "bank_reconciliations","fx_revaluations",
   "document_attachments","audit_log",
+  "company_settings",
+  // Core / Suppliers
+  "suppliers","supplier_invoices",
+  "journal_entries", "journal_lines", "invoices"
 ]);
 
 function requireAuth(req, res, next) {
@@ -184,15 +193,109 @@ app.use('/api/invoices', invoiceRoutes(pool, TABLES, requireAuth));
 app.use('/api/reports', reportRoutes(pool, requireAuth));
 app.use('/api/cash-control', cashControlRoutes(pool, requireAuth));
 app.use('/api/backup', backupRoutes(requireAuth));
-app.use('/api/sync', syncRoutes(pool, requireAuth));
+app.use('/api/sync', syncRoutes(pool));
+
+app.post("/api/rpc/:fn", requireAuth, async (req, res) => {
+  const fn = req.params.fn;
+  const args = req.body || {};
+  const allowed = new Set([
+    "fn_account_or_suspense",
+    "fn_generate_depreciation_schedule",
+    "fn_post_depreciation_month",
+  ]);
+  if (!allowed.has(fn)) return res.status(404).json({ error: "unknown rpc" });
+
+  const keys = Object.keys(args);
+  const vals = keys.map((k) => args[k]);
+  const placeholders = keys.map((_, i) => `$${i + 1}`).join(", ");
+  const sql = `SELECT public.${fn}(${placeholders}) AS result`;
+
+  try {
+    const { rows } = await pool.query(sql, vals);
+    res.json(rows[0]?.result ?? null);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ---------- generic table API ----------
+app.get("/api/:table/count", requireAuth, async (req, res) => {
+  const t = req.params.table;
+  if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
+  let queryStr = `SELECT COUNT(*) as count FROM public.${t} `;
+  let vals = [];
+  let whereClauses = [];
+  
+  for (const [k, v] of Object.entries(req.query)) {
+    if (k.startsWith('__isnull_')) {
+      whereClauses.push(`${k.replace('__isnull_', '')} IS NULL`);
+    } else if (k.startsWith('__not_')) {
+      // simplified not null
+      if (k.endsWith('_is')) {
+         whereClauses.push(`${k.replace('__not_', '').replace('_is', '')} IS NOT NULL`);
+      }
+    } else if (k !== 'limit' && k !== 'order' && k !== 'ascending') {
+      vals.push(v);
+      whereClauses.push(`${k} = $${vals.length}`);
+    }
+  }
+  if (whereClauses.length > 0) {
+    queryStr += 'WHERE ' + whereClauses.join(' AND ') + ' ';
+  }
+  try {
+    const { rows } = await pool.query(queryStr, vals);
+    res.json([{ count: parseInt(rows[0].count, 10) }]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get("/api/:table", requireAuth, async (req, res) => {
   const t = req.params.table;
   if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
-  const limit = Math.min(parseInt(req.query.limit) || 1000, 5000);
+  let limit = Math.min(parseInt(req.query.limit) || 1000, 5000);
+  // Support pseudo-joins like "*, properties(name)" by simply selecting everything from main table
+  let queryStr = `SELECT * FROM public.${t} `;
+  let vals = [];
+  let whereClauses = [];
+  
+  for (const [k, v] of Object.entries(req.query)) {
+    if (k.startsWith('__isnull_')) {
+      whereClauses.push(`${k.replace('__isnull_', '')} IS NULL`);
+    } else if (k.startsWith('__in_')) {
+      const parts = v.split(',');
+      const placeholders = parts.map(p => { vals.push(p); return `$${vals.length}`; }).join(',');
+      whereClauses.push(`${k.replace('__in_', '')} IN (${placeholders})`);
+    } else if (k.startsWith('__gte_')) {
+      vals.push(v);
+      whereClauses.push(`${k.replace('__gte_', '')} >= $${vals.length}`);
+    } else if (k.startsWith('__lte_')) {
+      vals.push(v);
+      whereClauses.push(`${k.replace('__lte_', '')} <= $${vals.length}`);
+    } else if (k.startsWith('__not_')) {
+      if (k.endsWith('_is')) {
+        whereClauses.push(`${k.replace('__not_', '').replace('_is', '')} IS NOT NULL`);
+      }
+    } else if (k !== 'limit' && k !== 'order' && k !== 'ascending' && k !== 'select') {
+      vals.push(v);
+      whereClauses.push(`${k} = $${vals.length}`);
+    }
+  }
+  if (whereClauses.length > 0) {
+    queryStr += 'WHERE ' + whereClauses.join(' AND ') + ' ';
+  }
+  if (req.query.order) {
+    // order could be an array if multiple were provided
+    const orders = Array.isArray(req.query.order) ? req.query.order : [req.query.order];
+    const asc = Array.isArray(req.query.ascending) ? req.query.ascending : [req.query.ascending];
+    const clauses = orders.map((o, i) => {
+      const dir = (asc[i] === 'false' || (!asc[i] && req.query.ascending === 'false')) ? 'DESC' : 'ASC';
+      return `${o} ${dir}`;
+    });
+    queryStr += `ORDER BY ${clauses.join(', ')} `;
+  }
+  vals.push(limit);
+  queryStr += `LIMIT $${vals.length}`;
   try {
-    const { rows } = await pool.query(`SELECT * FROM public.${t} LIMIT $1`,[limit]);
+    const { rows } = await pool.query(queryStr, vals);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -201,36 +304,102 @@ app.post("/api/:table", requireAuth, async (req, res) => {
   const t = req.params.table;
   if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
   if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+  
   const body = req.body || {};
-  const cols = Object.keys(body);
-  if (!cols.length) return res.status(400).json({ error: "empty body" });
-  const params = cols.map((_, i) => `$${i + 1}`);
+  const rowsToInsert = Array.isArray(body) ? body : [body].filter(Boolean);
+  if (!rowsToInsert.length) return res.json(Array.isArray(body) ? [] : null);
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows } = await client.query(
-      `INSERT INTO public.${t} (${cols.join(",")}) VALUES (${params.join(",")}) RETURNING *`,
-      cols.map(c => body[c])
-    );
-    const row = rows[0];
-
-    // Synchronous auto-post: if this table has a poster and the row isn't
-    // already linked to a journal entry, create one. Failure rolls back the
-    // whole transaction so the books stay balanced.
+    const results = [];
     const poster = POSTERS[t];
-    if (poster && !row.journal_entry_id) {
-      const jeId = await poster(client, row, { userId: req.user.sub });
-      if (jeId) {
-        await linkSourceToEntry(client, t, row.id, jeId);
-        row.journal_entry_id = jeId;
+
+    for (const rowData of rowsToInsert) {
+      const cols = Object.keys(rowData);
+      if (!cols.length) continue;
+      const params = cols.map((_, i) => `$${i + 1}`);
+      const { rows } = await client.query(
+        `INSERT INTO public.${t} (${cols.join(",")}) VALUES (${params.join(",")}) RETURNING *`,
+        cols.map(c => rowData[c])
+      );
+      const row = rows[0];
+
+      if (poster && !row.journal_entry_id) {
+        const jeId = await poster(client, row, { userId: req.user.sub });
+        if (jeId) {
+          await linkSourceToEntry(client, t, row.id, jeId);
+          row.journal_entry_id = jeId;
+        }
       }
+      results.push(row);
     }
 
     await client.query('COMMIT');
-    res.json(row);
+    res.json(Array.isArray(body) ? results : results[0]);
   } catch (e) {
     await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/:table/upsert", requireAuth, async (req, res) => {
+  const t = req.params.table;
+  if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
+  if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+
+  const { payload, options = {} } = req.body || {};
+  const rows = Array.isArray(payload) ? payload : [payload].filter(Boolean);
+  const onConflict = String(options.onConflict || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!rows.length) return res.status(400).json({ error: "empty payload" });
+  if (!onConflict.length) return res.status(400).json({ error: "onConflict required" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const results = [];
+
+    for (const row of rows) {
+      const cols = Object.keys(row || {});
+      if (!cols.length) continue;
+
+      const params = cols.map((_, i) => `$${i + 1}`);
+      const updateCols = cols.filter((col) => !onConflict.includes(col));
+      const conflictAction = options.ignoreDuplicates
+        ? "DO NOTHING"
+        : `DO UPDATE SET ${updateCols.map((col) => `${col}=EXCLUDED.${col}`).join(", ")}`;
+
+      const sql = `
+        INSERT INTO public.${t} (${cols.join(",")})
+        VALUES (${params.join(",")})
+        ON CONFLICT (${onConflict.join(", ")}) ${conflictAction}
+        RETURNING *
+      `;
+
+      const { rows: upserted } = await client.query(sql, cols.map((col) => row[col]));
+      if (upserted[0]) {
+        results.push(upserted[0]);
+        continue;
+      }
+
+      const where = onConflict.map((col, i) => `${col} = $${i + 1}`).join(" AND ");
+      const { rows: existing } = await client.query(
+        `SELECT * FROM public.${t} WHERE ${where} LIMIT 1`,
+        onConflict.map((col) => row[col])
+      );
+      if (existing[0]) results.push(existing[0]);
+    }
+
+    await client.query("COMMIT");
+    res.json(Array.isArray(payload) ? results : results[0] ?? null);
+  } catch (e) {
+    await client.query("ROLLBACK");
     res.status(500).json({ error: e.message });
   } finally {
     client.release();
@@ -241,23 +410,102 @@ app.patch("/api/:table", requireAuth, async (req, res) => {
   const t = req.params.table;
   if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
   if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
-  
+
   const { id, ...body } = req.body || {};
-  if (!id) return res.status(400).json({ error: "id required" });
-  
   const cols = Object.keys(body);
   if (!cols.length) return res.status(400).json({ error: "empty body" });
-  
-  const sets = cols.map((c, i) => `${c}=$${i + 2}`);
+
+  const sets = cols.map((c, i) => `${c}=$${i + 1}`);
   const vals = cols.map(c => body[c]);
+  const whereClauses = [];
+
+  if (id) {
+    vals.push(id);
+    whereClauses.push(`id=$${vals.length}`);
+  }
+
+  for (const [k, v] of Object.entries(req.query)) {
+    if (k.startsWith('__in_')) {
+      const parts = String(v).split(',');
+      const placeholders = parts.map((part) => {
+        vals.push(part);
+        return `$${vals.length}`;
+      }).join(',');
+      whereClauses.push(`${k.replace('__in_', '')} IN (${placeholders})`);
+    } else if (k !== 'id') {
+      vals.push(v);
+      whereClauses.push(`${k}=$${vals.length}`);
+    }
+  }
+
+  if (!whereClauses.length) return res.status(400).json({ error: "update requires id or query filters" });
 
   try {
     const { rows } = await pool.query(
-      `UPDATE public.${t} SET ${sets.join(",")} WHERE id=$1 RETURNING *`,
-      [id, ...vals]
+      `UPDATE public.${t} SET ${sets.join(",")} WHERE ${whereClauses.join(" AND ")} RETURNING *`,
+      vals
     );
-    res.json(rows[0]);
+    res.json(rows.length === 1 ? rows[0] : rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete("/api/:table", requireAuth, async (req, res) => {
+  const t = req.params.table;
+  if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
+  if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+  
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const vals = [];
+    const whereClauses = [];
+    for (const [k, v] of Object.entries(req.query)) {
+      if (k.startsWith('__in_')) {
+        const parts = String(v).split(',');
+        const placeholders = parts.map((part) => {
+          vals.push(part);
+          return `$${vals.length}`;
+        }).join(',');
+        whereClauses.push(`${k.replace('__in_', '')} IN (${placeholders})`);
+      } else {
+        vals.push(v);
+        whereClauses.push(`${k} = $${vals.length}`);
+      }
+    }
+    if (!whereClauses.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: "delete requires query filters" });
+    }
+    const { rowCount } = await client.query(
+      `DELETE FROM public.${t} WHERE ${whereClauses.join(' AND ')}`,
+      vals,
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, deleted: rowCount });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete("/api/:table/:id", requireAuth, async (req, res) => {
+  const t = req.params.table;
+  if (!TABLES.has(t)) return res.status(404).json({ error: "unknown table" });
+  if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rowCount } = await client.query(`DELETE FROM public.${t} WHERE id = $1`, [req.params.id]);
+    await client.query('COMMIT');
+    res.json({ success: true, deleted: rowCount });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally {
+    client.release();
+  }
 });
 
 app.get("/health", (_, res) => res.json({ ok: true }));

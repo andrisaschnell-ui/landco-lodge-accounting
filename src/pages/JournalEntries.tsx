@@ -40,9 +40,9 @@ export default function JournalEntries() {
   const load = async () => {
     setLoading(true);
     const [{ data: accs }, { data: jes }, { data: jls }] = await Promise.all([
-      supabase.from("accounts").select("id, code, name").order("code"),
-      supabase.from("journal_entries").select("*").order("entry_date", { ascending: false }).limit(500),
-      supabase.from("journal_lines").select("*"),
+      db.from("accounts").select("id, code, name").order("code"),
+      db.from("journal_entries").select("*").order("entry_date", { ascending: false }).limit(500),
+      db.from("journal_lines").select("*"),
     ]);
     const linesByEntry = new Map<string, JLine[]>();
     (jls || []).forEach((l: JLine) => {
@@ -56,10 +56,10 @@ export default function JournalEntries() {
 
     // Count unposted source transactions (no journal_entry_id)
     const counts = await Promise.all([
-      supabase.from("income_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
-      supabase.from("expense_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
-      supabase.from("bank_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
-      supabase.from("petty_cash_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
+      db.from("income_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
+      db.from("expense_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
+      db.from("bank_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
+      db.from("petty_cash_transactions").select("id", { count: "exact", head: true }).is("journal_entry_id", null),
     ]);
     const total = counts.reduce((s, r: any) => s + (r.count || 0), 0);
     setUnpostedCount(total);
@@ -91,7 +91,7 @@ export default function JournalEntries() {
       };
 
       // Bank accounts -> account row
-      const { data: banks } = await supabase.from("bank_accounts").select("id, name, pgc_account_code");
+      const { data: banks } = await db.from("bank_accounts").select("id, name, pgc_account_code");
       const bankAccCode = new Map<string, string | null>();
       (banks || []).forEach((b: any) => bankAccCode.set(b.id, b.pgc_account_code || null));
 
@@ -120,11 +120,11 @@ export default function JournalEntries() {
           })
           .select().single();
         if (error || !je) continue;
-        await supabase.from("journal_lines").insert([
+        await db.from("journal_lines").insert([
           { journal_entry_id: je.id, account_id: pettyCashAcc.id, debit: total, credit: 0, memo: "Cash received" },
           { journal_entry_id: je.id, account_id: revenue.id, debit: 0, credit: total, memo: "Accommodation income" },
         ]);
-        await supabase.from("income_transactions").update({ journal_entry_id: je.id }).eq("id", it.id);
+        await db.from("income_transactions").update({ journal_entry_id: je.id }).eq("id", it.id);
         posted++;
       }
 
@@ -149,11 +149,11 @@ export default function JournalEntries() {
           })
           .select().single();
         if (error || !je) continue;
-        await supabase.from("journal_lines").insert([
+        await db.from("journal_lines").insert([
           { journal_entry_id: je.id, account_id: expAcc.id, debit: total, credit: 0, memo: ex.description },
           { journal_entry_id: je.id, account_id: pettyCashAcc.id, debit: 0, credit: total, memo: "Paid" },
         ]);
-        await supabase.from("expense_transactions").update({ journal_entry_id: je.id }).eq("id", ex.id);
+        await db.from("expense_transactions").update({ journal_entry_id: je.id }).eq("id", ex.id);
         posted++;
       }
 
@@ -179,11 +179,11 @@ export default function JournalEntries() {
           .select().single();
         if (error || !je) continue;
         const amt = debit || credit;
-        await supabase.from("journal_lines").insert([
+        await db.from("journal_lines").insert([
           { journal_entry_id: je.id, account_id: debit ? bankAcc.id : suspense.id, debit: amt, credit: 0, memo: b.description },
           { journal_entry_id: je.id, account_id: debit ? suspense.id : bankAcc.id, debit: 0, credit: amt, memo: b.description },
         ]);
-        await supabase.from("bank_transactions").update({ journal_entry_id: je.id }).eq("id", b.id);
+        await db.from("bank_transactions").update({ journal_entry_id: je.id }).eq("id", b.id);
         posted++;
       }
 
@@ -208,11 +208,11 @@ export default function JournalEntries() {
           .select().single();
         if (error || !je) continue;
         const amt = debit || credit;
-        await supabase.from("journal_lines").insert([
+        await db.from("journal_lines").insert([
           { journal_entry_id: je.id, account_id: debit ? pettyCashAcc.id : expAcc.id, debit: amt, credit: 0, memo: p.description },
           { journal_entry_id: je.id, account_id: debit ? expAcc.id : pettyCashAcc.id, debit: 0, credit: amt, memo: p.description },
         ]);
-        await supabase.from("petty_cash_transactions").update({ journal_entry_id: je.id }).eq("id", p.id);
+        await db.from("petty_cash_transactions").update({ journal_entry_id: je.id }).eq("id", p.id);
         posted++;
       }
 

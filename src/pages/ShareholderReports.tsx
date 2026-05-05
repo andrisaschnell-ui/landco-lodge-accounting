@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, TrendingUp, TrendingDown, Users, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Home, TrendingUp, TrendingDown, Users, Wallet, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 const HOUSES = [
   { code: "H1", name: "H1 — Casa Luz" },
@@ -57,6 +59,27 @@ export default function ShareholderReports() {
     queryFn: () => api(`/api/reports/shareholder/${selectedHouse}?${queryParams}`),
   });
 
+  const { data: balanceHistory } = useQuery({
+    queryKey: ["shareholder-balances-history", selectedHouse, selectedYear],
+    queryFn: () => api(`/api/reports/shareholder-balances/${selectedHouse}?year=${selectedYear}`),
+  });
+
+  const downloadExcel = () => {
+    if (!balanceHistory?.monthlyData) return;
+    const worksheet = XLSX.utils.json_to_sheet(balanceHistory.monthlyData.map((d: any) => ({
+      Month: MONTHS.find(m => m.value === String(d.month))?.label,
+      Year: d.year,
+      "Opening Balance": d.opening_balance,
+      Income: d.income,
+      Expenses: d.expenses,
+      "Net Position": d.net_position,
+      "Closing Balance": d.closing_balance
+    })));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Balances");
+    XLSX.writeFile(workbook, `Shareholder_Balances_${selectedHouse}_${selectedYear}.xlsx`);
+  };
+
   const periodLabel = selectedMonth && selectedMonth !== "all"
     ? `${MONTHS.find(m => m.value === selectedMonth)?.label} ${selectedYear}`
     : `Full Year ${selectedYear}`;
@@ -76,6 +99,9 @@ export default function ShareholderReports() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
+          <Button variant="outline" onClick={downloadExcel} disabled={!balanceHistory}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" /> Download Excel
+          </Button>
           <Select value={selectedHouse} onValueChange={setSelectedHouse}>
             <SelectTrigger className="w-48" id="house-selector">
               <SelectValue placeholder="Select House" />
@@ -153,6 +179,7 @@ export default function ShareholderReports() {
               <TabsTrigger value="salaries">Salaries</TabsTrigger>
               <TabsTrigger value="petty">Petty Cash Share</TabsTrigger>
               <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly Balances</TabsTrigger>
             </TabsList>
 
             {/* Income */}
@@ -363,6 +390,45 @@ export default function ShareholderReports() {
                           {stmt.net_position >= 0 ? "" : ")"}
                         </TableCell>
                       </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Monthly Balances */}
+            <TabsContent value="monthly" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Running Balances — {house?.name}</CardTitle>
+                  <CardDescription>
+                    Live calculations from the ledger. Initial balance is pulled from your January import.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Month</TableHead>
+                        <TableHead className="text-right">Opening</TableHead>
+                        <TableHead className="text-right">Income</TableHead>
+                        <TableHead className="text-right">Expenses</TableHead>
+                        <TableHead className="text-right font-bold text-primary">Closing</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {balanceHistory?.monthlyData?.map((b: any) => (
+                        <TableRow key={b.month}>
+                          <TableCell className="font-medium">{MONTHS.find(m => m.value === String(b.month))?.label}</TableCell>
+                          <TableCell className="text-right font-mono">{fmt(b.opening_balance)}</TableCell>
+                          <TableCell className="text-right font-mono text-green-600">{fmt(b.income)}</TableCell>
+                          <TableCell className="text-right font-mono text-red-600">{fmt(b.expenses)}</TableCell>
+                          <TableCell className="text-right font-mono font-bold text-primary">{fmt(b.closing_balance)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {!balanceHistory?.monthlyData?.length && (
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No balance history available.</TableCell></TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>

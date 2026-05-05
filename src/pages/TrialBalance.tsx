@@ -27,7 +27,7 @@ export default function TrialBalance() {
     (async () => {
       setLoading(true);
       const [{ data: accs }, { data: lines }] = await Promise.all([
-        supabase.from("accounts").select("id, code, name, account_type, pgc_class, normal_side").order("code"),
+        db.from("accounts").select("id, code, name, account_type, pgc_class, normal_side").order("code"),
         // join lines with entries to filter posted only
         supabase
           .from("journal_lines")

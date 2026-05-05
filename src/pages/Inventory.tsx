@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,8 +42,8 @@ export default function Inventory() {
 
   async function load() {
     const [{ data: i }, { data: m }] = await Promise.all([
-      supabase.from("inventory_items").select("*").order("sku"),
-      supabase.from("inventory_movements").select("*").order("created_at", { ascending: false }).limit(200),
+      db.from("inventory_items").select("*").order("sku"),
+      db.from("inventory_movements").select("*").order("created_at", { ascending: false }).limit(200),
     ]);
     setItems((i as Item[]) || []);
     setMovements((m as Movement[]) || []);
@@ -51,7 +51,7 @@ export default function Inventory() {
   useEffect(() => { load(); }, []);
 
   async function saveItem() {
-    const { error } = await supabase.from("inventory_items").insert(itemForm as any);
+    const { error } = await db.from("inventory_items").insert(itemForm as any);
     if (error) return toast({ title: "Save failed", description: error.message, variant: "destructive" });
     toast({ title: "Item created" });
     setOpenItem(false);
@@ -65,7 +65,7 @@ export default function Inventory() {
     }
     const payload: any = { ...moveForm, movement_type: moveType };
     if (moveType === "out") payload.unit_cost = 0; // engine overrides with WAC
-    const { error } = await supabase.from("inventory_movements").insert(payload);
+    const { error } = await db.from("inventory_movements").insert(payload);
     if (error) return toast({ title: "Movement failed", description: error.message, variant: "destructive" });
     toast({ title: `Movement recorded (${moveType})` });
     setOpenMove(false);

@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export default function ShareholderDetail() {
   const { data: shareholder } = useQuery({
     queryKey: ["shareholder", id],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholders").select("*").eq("id", id!).single();
+      const { data } = await db.from("shareholders").select("*").eq("id", id!).single();
       return data;
     },
     enabled: !!id,
@@ -27,7 +27,7 @@ export default function ShareholderDetail() {
   const { data: balances } = useQuery({
     queryKey: ["sh-balances", id],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholder_balances").select("*, properties(name)").eq("shareholder_id", id!).order("year").order("month");
+      const { data } = await db.from("shareholder_balances").select("*, properties(name)").eq("shareholder_id", id!).order("year").order("month");
       return data ?? [];
     },
     enabled: !!id,
@@ -36,7 +36,7 @@ export default function ShareholderDetail() {
   const { data: expenses } = useQuery({
     queryKey: ["sh-expenses", id],
     queryFn: async () => {
-      const { data } = await supabase.from("expense_transactions").select("*, expense_categories(name)").eq("shareholder_id", id!).order("date", { ascending: false }).limit(50);
+      const { data } = await db.from("expense_transactions").select("*, expense_categories(name)").eq("shareholder_id", id!).order("date", { ascending: false }).limit(50);
       return data ?? [];
     },
     enabled: !!id,

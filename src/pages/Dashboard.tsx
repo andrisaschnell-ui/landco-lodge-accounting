@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -14,7 +14,7 @@ export default function Dashboard() {
   const { data: income } = useQuery({
     queryKey: ["income-total"],
     queryFn: async () => {
-      const { data } = await supabase.from("income_transactions").select("accommodation_amount_mzn, property_id, month");
+      const { data } = await db.from("income_transactions").select("accommodation_amount_mzn, property_id, month");
       return Array.isArray(data) ? data : [];
     },
   });
@@ -22,7 +22,7 @@ export default function Dashboard() {
   const { data: expenses } = useQuery({
     queryKey: ["expense-total"],
     queryFn: async () => {
-      const { data } = await supabase.from("expense_transactions").select("amount_mzn, is_shared, month");
+      const { data } = await db.from("expense_transactions").select("amount_mzn, is_shared, month");
       return Array.isArray(data) ? data : [];
     },
   });
@@ -30,7 +30,7 @@ export default function Dashboard() {
   const { data: exchangeRate } = useQuery({
     queryKey: ["exchange-rate"],
     queryFn: async () => {
-      const { data } = await supabase.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false }).limit(1);
+      const { data } = await db.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false }).limit(1);
       return Array.isArray(data) ? data[0] : null;
     },
   });
@@ -38,7 +38,7 @@ export default function Dashboard() {
   const { data: properties } = useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
-      const { data } = await supabase.from("properties").select("*");
+      const { data } = await db.from("properties").select("*");
       return Array.isArray(data) ? data : [];
     },
   });
@@ -46,7 +46,7 @@ export default function Dashboard() {
   const { data: shareholders } = useQuery({
     queryKey: ["shareholders-balances"],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholder_balances").select("*, shareholders(name), properties(name)");
+      const { data } = await db.from("shareholder_balances").select("*, shareholders(name), properties(name)");
       return Array.isArray(data) ? data : [];
     },
   });
@@ -54,7 +54,7 @@ export default function Dashboard() {
   const { data: recentImports } = useQuery({
     queryKey: ["recent-imports"],
     queryFn: async () => {
-      const { data } = await supabase.from("import_log").select("*").order("created_at", { ascending: false }).limit(5);
+      const { data } = await db.from("import_log").select("*").order("created_at", { ascending: false }).limit(5);
       return Array.isArray(data) ? data : [];
     },
   });

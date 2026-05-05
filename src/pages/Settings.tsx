@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Save, Trash2, Upload } from "lucide-react";
+import { isLocalMode } from "@/lib/dbMode";
+import { supabase } from "@/integrations/supabase/client";
+
+type ExchangeRateRow = {
+  id: string;
+  month: number;
+  year: number;
+  mzn_per_usd: number | string;
+  mzn_per_zar: number | string | null;
+};
 
 export default function Settings() {
   const { settings, loading, update, refresh } = useCompanySettings();
@@ -18,18 +28,29 @@ export default function Settings() {
   const [checkingRole, setCheckingRole] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRateRow[]>([]);
+  const [rateForm, setRateForm] = useState({ id: "", month: 1, year: new Date().getFullYear(), mzn_per_usd: 0, mzn_per_zar: 0 });
+  const localMode = isLocalMode();
 
   useEffect(() => {
     (async () => {
       const uid = (user as any)?.id;
       if (!uid) { setIsAdmin(false); setCheckingRole(false); return; }
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      const { data } = await db.from("user_roles").select("role").eq("user_id", uid);
       setIsAdmin(!!data?.some((r: any) => r.role === "admin"));
       setCheckingRole(false);
     })();
   }, [user]);
 
   useEffect(() => { if (settings) setForm(settings); }, [settings]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    (async () => {
+      const { data } = await db.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false });
+      setExchangeRates((data as ExchangeRateRow[]) ?? []);
+    })();
+  }, [isAdmin]);
 
   if (loading || checkingRole) {
     return <div className="flex items-center gap-2 p-6"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
@@ -56,6 +77,10 @@ export default function Settings() {
   };
 
   const handleLogoUpload = async (file: File) => {
+    if (localMode) {
+      toast({ title: "Local mode", description: "Logo file upload is not available in the local stack yet. Paste a logo URL instead." });
+      return;
+    }
     setSaving(true);
     const ext = file.name.split(".").pop();
     const path = `logo-${Date.now()}.${ext}`;
@@ -66,6 +91,50 @@ export default function Settings() {
     await refresh();
     setSaving(false);
     toast({ title: "Logo uploaded" });
+  };
+
+  const refreshExchangeRates = async () => {
+    const { data } = await db.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false });
+    setExchangeRates((data as ExchangeRateRow[]) ?? []);
+  };
+
+  const saveRate = async () => {
+    const payload = {
+      month: rateForm.month,
+      year: rateForm.year,
+      mzn_per_usd: rateForm.mzn_per_usd,
+      mzn_per_zar: rateForm.mzn_per_zar || null,
+    };
+    const result = rateForm.id
+      ? await db.from("exchange_rates").update(payload).eq("id", rateForm.id)
+      : await db.from("exchange_rates").insert(payload);
+    if (result.error) {
+      toast({ title: "Exchange rate save failed", description: result.error.message, variant: "destructive" });
+      return;
+    }
+    setRateForm({ id: "", month: 1, year: new Date().getFullYear(), mzn_per_usd: 0, mzn_per_zar: 0 });
+    await refreshExchangeRates();
+    toast({ title: "Exchange rate saved" });
+  };
+
+  const editRate = (row: ExchangeRateRow) => {
+    setRateForm({
+      id: row.id,
+      month: row.month,
+      year: row.year,
+      mzn_per_usd: Number(row.mzn_per_usd),
+      mzn_per_zar: Number(row.mzn_per_zar ?? 0),
+    });
+  };
+
+  const removeRate = async (id: string) => {
+    const result = await db.from("exchange_rates").delete().eq("id", id);
+    if (result.error) {
+      toast({ title: "Delete failed", description: result.error.message, variant: "destructive" });
+      return;
+    }
+    await refreshExchangeRates();
+    toast({ title: "Exchange rate deleted" });
   };
 
   return (
@@ -96,33 +165,79 @@ export default function Settings() {
                 <Label>Logo</Label>
                 <div className="flex items-center gap-4">
                   {form.logo_url && <img src={form.logo_url} alt="Logo" className="h-16 w-16 object-contain border rounded" />}
-                  <label className="inline-flex items-center gap-2 px-3 py-2 border rounded cursor-pointer hover:bg-muted">
+                  <label className={`inline-flex items-center gap-2 px-3 py-2 border rounded ${localMode ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted"}`}>
                     <Upload className="h-4 w-4" /> Upload logo
                     <input type="file" accept="image/*" className="hidden"
+                      disabled={localMode}
                       onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
                   </label>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {localMode ? "Local mode currently supports a logo URL, not direct file upload." : "Upload a square logo for headers and documents."}
+                </p>
               </div>
-              <Button disabled={saving} onClick={() => save(["name", "nuit", "address"])}>Save Identity</Button>
+              <div>
+                <Label>Logo URL</Label>
+                <Input value={form.logo_url || ""} onChange={e => set("logo_url", e.target.value)} placeholder="https://..." />
+              </div>
+              <Button disabled={saving} onClick={() => save(["name", "nuit", "address", "logo_url"])}>Save Identity</Button>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="financial">
-          <Card>
-            <CardHeader><CardTitle>Financial Defaults</CardTitle>
-              <CardDescription>Currency, VAT rate, invoice series, fiscal year.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Currency</Label><Input value={form.currency || ""} onChange={e => set("currency", e.target.value)} /></div>
-                <div><Label>VAT rate (%)</Label><Input type="number" step="0.01" value={form.vat_rate ?? 0} onChange={e => set("vat_rate", parseFloat(e.target.value) || 0)} /></div>
-                <div><Label>Invoice series prefix</Label><Input value={form.invoice_series_prefix || ""} onChange={e => set("invoice_series_prefix", e.target.value)} /></div>
-                <div><Label>Fiscal year start month (1–12)</Label><Input type="number" min="1" max="12" value={form.fiscal_year_start_month ?? 1} onChange={e => set("fiscal_year_start_month", parseInt(e.target.value) || 1)} /></div>
-              </div>
-              <Button disabled={saving} onClick={() => save(["currency", "vat_rate", "invoice_series_prefix", "fiscal_year_start_month"])}>Save Financial</Button>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader><CardTitle>Financial Defaults</CardTitle>
+                <CardDescription>Currency, VAT rate, invoice series, fiscal year.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Currency</Label><Input value={form.currency || ""} onChange={e => set("currency", e.target.value)} /></div>
+                  <div><Label>VAT rate (%)</Label><Input type="number" step="0.01" value={form.vat_rate ?? 0} onChange={e => set("vat_rate", parseFloat(e.target.value) || 0)} /></div>
+                  <div><Label>Invoice series prefix</Label><Input value={form.invoice_series_prefix || ""} onChange={e => set("invoice_series_prefix", e.target.value)} /></div>
+                  <div><Label>Fiscal year start month (1–12)</Label><Input type="number" min="1" max="12" value={form.fiscal_year_start_month ?? 1} onChange={e => set("fiscal_year_start_month", parseInt(e.target.value) || 1)} /></div>
+                  <div><Label>Yearly Salary Increase Month</Label><Input type="number" min="1" max="12" value={form.salary_increase_month ?? 4} onChange={e => set("salary_increase_month", parseInt(e.target.value) || 4)} /></div>
+                  <div><Label>Yearly Salary Increase (%)</Label><Input type="number" step="0.01" value={form.salary_increase_percentage ?? 0} onChange={e => set("salary_increase_percentage", parseFloat(e.target.value) || 0)} /></div>
+                </div>
+                <Button disabled={saving} onClick={() => save(["currency", "vat_rate", "invoice_series_prefix", "fiscal_year_start_month", "salary_increase_month", "salary_increase_percentage"])}>Save Financial</Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Exchange Rates</CardTitle>
+                <CardDescription>Used by Landco Income uploads when the workbook does not provide a USD amount.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  <div><Label>Month</Label><Input type="number" min="1" max="12" value={rateForm.month} onChange={(e) => setRateForm((current) => ({ ...current, month: parseInt(e.target.value) || 1 }))} /></div>
+                  <div><Label>Year</Label><Input type="number" value={rateForm.year} onChange={(e) => setRateForm((current) => ({ ...current, year: parseInt(e.target.value) || new Date().getFullYear() }))} /></div>
+                  <div><Label>MZN / USD</Label><Input type="number" step="0.0001" value={rateForm.mzn_per_usd} onChange={(e) => setRateForm((current) => ({ ...current, mzn_per_usd: parseFloat(e.target.value) || 0 }))} /></div>
+                  <div><Label>MZN / ZAR</Label><Input type="number" step="0.0001" value={rateForm.mzn_per_zar} onChange={(e) => setRateForm((current) => ({ ...current, mzn_per_zar: parseFloat(e.target.value) || 0 }))} /></div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveRate}><Save className="mr-2 h-4 w-4" />{rateForm.id ? "Update rate" : "Add rate"}</Button>
+                  {rateForm.id ? <Button variant="outline" onClick={() => setRateForm({ id: "", month: 1, year: new Date().getFullYear(), mzn_per_usd: 0, mzn_per_zar: 0 })}>Cancel edit</Button> : null}
+                </div>
+                <div className="space-y-2">
+                  {exchangeRates.map((row) => (
+                    <div key={row.id} className="flex items-center justify-between rounded border p-3 text-sm">
+                      <div>
+                        <div className="font-medium">{row.year}-{String(row.month).padStart(2, "0")}</div>
+                        <div className="text-muted-foreground">USD: {row.mzn_per_usd} | ZAR: {row.mzn_per_zar ?? "—"}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => editRate(row)}>Edit</Button>
+                        <Button variant="destructive" size="sm" onClick={() => removeRate(row.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                  ))}
+                  {exchangeRates.length === 0 ? <p className="text-sm text-muted-foreground">No exchange rates saved yet.</p> : null}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="branding">

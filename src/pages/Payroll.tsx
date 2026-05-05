@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 function formatMZN(v: number) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(Number(v) || 0);
@@ -44,6 +46,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
   const [dupYear, setDupYear] = useState<number>(run.month === 12 ? run.year + 1 : run.year);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const queryClient = useQueryClient();
+  const { settings } = useCompanySettings();
 
   useEffect(() => {
     // Rely exclusively on true mapping array position
@@ -60,13 +63,60 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
     return house === houseFilter;
   });
 
-  const handleEditCell = (tempId: string, field: string, value: any) => {
+    const handleEditCell = (tempId: string, field: string, value: any) => {
     setLocalLines(prev => prev.map(l => {
       if (l.tempId === tempId) {
-        if (field === 'house_assignment_temp') return { ...l, employees: { ...l.employees, house_assignment: value }, house_assignment_temp: value };
-        if (field === 'name') return { ...l, employees: { ...l.employees, name: value } };
-        if (field === 'nib') return { ...l, employees: { ...l.employees, nib: value }, nib: value };
-        return { ...l, [field]: value };
+        let newLine = { ...l };
+        if (field === 'house_assignment_temp') {
+          newLine = { ...newLine, employees: { ...newLine.employees, house_assignment: value }, house_assignment_temp: value };
+        } else if (field === 'name') {
+          newLine = { ...newLine, employees: { ...newLine.employees, name: value } };
+        } else if (field === 'nib') {
+          newLine = { ...newLine, employees: { ...newLine.employees, nib: value }, nib: value };
+        } else {
+          newLine = { ...newLine, [field]: value };
+        }
+        
+        const increaseMult = (run.month >= (settings?.salary_increase_month || 4)) 
+          ? (1 + (settings?.salary_increase_percentage || 0) / 100) 
+          : 1;
+
+        const bs = Number(newLine.base_salary || 0);
+        const effectiveBs = bs * increaseMult;
+        const dw = Number(newLine.days_worked ?? 30);
+        const food = Number(newLine.food_allowance || 0);
+        const back = Number(newLine.back_payment || 0);
+        
+        newLine.monthly_salary = (effectiveBs / 30) * dw + food + back;
+        
+        const nsHours = Number(newLine.nightshift_hours || 0);
+        newLine.guardas_25 = dw > 0 ? (newLine.monthly_salary / dw / 8) * nsHours * 0.25 : 0;
+        
+        const ot15Hours = Number(newLine.overtime_15x_hours || 0);
+        newLine.overtime_15x_amount = (effectiveBs / 192) * ot15Hours * 1.5;
+        
+        const ot2Hours = Number(newLine.overtime_2x_hours || 0);
+        newLine.overtime_2x_amount = (newLine.monthly_salary / 192) * ot2Hours * 2.0;
+        
+        const holDays = Number(newLine.holiday_days || 0);
+        newLine.holiday_amount = (newLine.monthly_salary / 30) * holDays;
+        
+        const premios = Number(newLine.premios || 0);
+        const grat = Number(newLine.gratification || 0);
+        
+        newLine.gross_total = newLine.monthly_salary + newLine.guardas_25 + newLine.overtime_15x_amount + newLine.overtime_2x_amount + premios + grat + newLine.holiday_amount;
+        
+        newLine.inss_employee = newLine.gross_total * 0.03;
+        newLine.sind = newLine.gross_total * 0.01;
+        
+        const adv = Number(newLine.advance || 0);
+        const irps = Number(newLine.irps || 0);
+        const debt = Number(newLine.debt || 0);
+        
+        newLine.total_deductions = adv + irps + debt + newLine.inss_employee + newLine.sind;
+        newLine.net_salary = newLine.gross_total - newLine.total_deductions;
+        
+        return newLine;
       }
       return l;
     }));
@@ -131,9 +181,9 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
   const deleteEntireMonth = async () => {
     setIsSaving(true);
     try {
-      const { error: linesErr } = await supabase.from("salary_lines").delete().eq("salary_run_id", run.id);
+      const { error: linesErr } = await db.from("salary_lines").delete().eq("salary_run_id", run.id);
       if (linesErr) throw linesErr;
-      const { error: runErr } = await supabase.from("salary_runs").delete().eq("id", run.id);
+      const { error: runErr } = await db.from("salary_runs").delete().eq("id", run.id);
       if (runErr) throw runErr;
       toast({ title: "Month deleted", description: `${MONTH_NAMES[run.month]} ${run.year} payroll removed.` });
       await queryClient.invalidateQueries({ queryKey: ["salary-runs"] });
@@ -193,6 +243,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
           overtime_15x_amount: l.overtime_15x_amount,
           overtime_2x_hours: l.overtime_2x_hours,
           overtime_2x_amount: l.overtime_2x_amount,
+          premios: l.premios,
           gratification: l.gratification,
           holiday_days: l.holiday_days,
           holiday_amount: l.holiday_amount,
@@ -210,7 +261,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
         })).filter((l) => l.employee_id);
 
         if (cloned.length > 0) {
-          const { error: insErr } = await supabase.from("salary_lines").insert(cloned);
+          const { error: insErr } = await db.from("salary_lines").insert(cloned);
           if (insErr) throw insErr;
         }
       }
@@ -252,7 +303,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
       }));
 
       // 2. Clear old lines for this run securely
-      const { error: delErr } = await supabase.from("salary_lines").delete().eq("salary_run_id", run.id);
+      const { error: delErr } = await db.from("salary_lines").delete().eq("salary_run_id", run.id);
       if (delErr) throw new Error("Wipe failed: " + delErr.message);
       
       // 3. Insert fresh updated data sequentially using staggered timestamps to guarantee exact database query structural order
@@ -271,6 +322,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
         overtime_15x_amount: l.overtime_15x_amount,
         overtime_2x_hours: l.overtime_2x_hours,
         overtime_2x_amount: l.overtime_2x_amount,
+        premios: l.premios,
         gratification: l.gratification,
         holiday_days: l.holiday_days,
         holiday_amount: l.holiday_amount,
@@ -288,7 +340,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
       }));
 
       if (toInsert.length > 0) {
-        const { error: insErr } = await supabase.from("salary_lines").insert(toInsert);
+        const { error: insErr } = await db.from("salary_lines").insert(toInsert);
         if (insErr) throw new Error("Insert failed: " + insErr.message);
       }
       alert("Saved successfully! Data committed to database.");
@@ -303,17 +355,17 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
     const header = [
       "No", "House", "Name", "Category", "Base Salary", "Food Allowance", "Back Payment", 
       "Days Worked", "Monthly Salary", "Nightshift", "25% Guarda", "Overtime 1.5x (Hrs)", 
-      "Overtime 1.5x (Amt)", "Overtime 2x (Hrs)", "Overtime 2x (Amt)", "Gratification", 
+      "Overtime 1.5x (Amt)", "Overtime 2x (Hrs)", "Overtime 2x (Amt)", "Premios", "Gratification", 
       "Holiday Days", "Holiday Amount", "Gross Total", "Advance", "IRPS", "Debt", "INSS", 
       "SIND", "Total Deductions", "Net Salary", "Bank_Account"
     ];
 
     const dataRows = (isTemplate ? [{ row_no: 1, employees: { house_assignment: "LC", name: "Example Employee" }, base_salary: 10000 }] : displayedLines).map((l, i) => {
       const rowNum = i + 2; 
-      const monthlySalaryFormula = { t: 'n', f: `E${rowNum}+F${rowNum}+G${rowNum}` };
-      const grossTotalFormula = { t: 'n', f: `I${rowNum}+K${rowNum}+M${rowNum}+O${rowNum}+P${rowNum}+R${rowNum}` };
-      const deductionsFormula = { t: 'n', f: `T${rowNum}+U${rowNum}+V${rowNum}+W${rowNum}+X${rowNum}` };
-      const netSalaryFormula = { t: 'n', f: `S${rowNum}-Y${rowNum}` };
+      const monthlySalaryFormula = { t: 'n', f: `E${rowNum}/30*H${rowNum}+F${rowNum}+G${rowNum}` };
+      const grossTotalFormula = { t: 'n', f: `I${rowNum}+K${rowNum}+M${rowNum}+O${rowNum}+P${rowNum}+Q${rowNum}+S${rowNum}` };
+      const deductionsFormula = { t: 'n', f: `U${rowNum}+V${rowNum}+W${rowNum}+X${rowNum}+Y${rowNum}` };
+      const netSalaryFormula = { t: 'n', f: `T${rowNum}-Z${rowNum}` };
 
       return [
         (i + 1).toString(),
@@ -331,6 +383,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
         l.overtime_15x_amount || 0,
         l.overtime_2x_hours || 0,
         l.overtime_2x_amount || 0,
+        l.premios || 0,
         l.gratification || 0,
         l.holiday_days || 0,
         l.holiday_amount || 0,
@@ -381,6 +434,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
         overtime_15x_amount: row["Overtime 1.5x (Amt)"] || 0,
         overtime_2x_hours: row["Overtime 2x (Hrs)"] || 0,
         overtime_2x_amount: row["Overtime 2x (Amt)"] || 0,
+        premios: row["Premios"] || 0,
         gratification: row["Gratification"] || 0,
         holiday_days: row["Holiday Days"] || 0,
         holiday_amount: row["Holiday Amount"] || 0,
@@ -548,6 +602,8 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
                   <TableHead className="text-right p-2 sticky top-0 bg-slate-100 z-40 border-r border-b border-t">HORAS 2.0</TableHead>
                   <TableHead className="text-right p-2 sticky top-0 bg-blue-50 z-40 border-r border-b border-t">VALOR 2.0</TableHead>
                   
+                  <TableHead className="text-right p-2 sticky top-0 bg-slate-100 z-40 border-r border-b border-t">PREMIOS</TableHead>
+                  <TableHead className="text-right p-2 sticky top-0 bg-slate-100 z-40 border-r border-b border-t">PREMIOS</TableHead>
                   <TableHead className="text-right p-2 sticky top-0 bg-slate-100 z-40 border-r border-b border-t">GRATIFIC.</TableHead>
                   <TableHead className="text-center p-2 sticky top-0 bg-slate-100 z-40 border-r border-b border-t">DIAS FERIA</TableHead>
                   <TableHead className="text-right p-2 sticky top-0 bg-blue-50 z-40 border-r border-b border-t">MONTANTE FERIA</TableHead>
@@ -623,6 +679,8 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
                       { field: 'overtime_2x_hours' },
                       { field: 'overtime_2x_amount', bg: "bg-blue-50/30" },
                       
+                      { field: 'premios' },
+                      { field: 'premios' },
                       { field: 'gratification' },
                       { field: 'holiday_days', center: true },
                       { field: 'holiday_amount', bg: "bg-blue-50/30" },
@@ -698,6 +756,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
                   <TableCell className="p-2 border-r border-b border-slate-700">---</TableCell>
                   <TableCell className="p-2 text-right border-r border-b border-slate-700 bg-slate-800">{formatMZN(displayedLines.reduce((s: any, c: any) => s + Number(c.overtime_2x_amount || 0), 0))}</TableCell>
                   
+                  <TableCell className="p-2 text-right border-r border-b border-slate-700">{formatMZN(displayedLines.reduce((s: any, c: any) => s + Number(c.premios || 0), 0))}</TableCell>
                   <TableCell className="p-2 text-right border-r border-b border-slate-700">{formatMZN(displayedLines.reduce((s: any, c: any) => s + Number(c.gratification || 0), 0))}</TableCell>
                   <TableCell className="p-2 border-r border-b border-slate-700">---</TableCell>
                   <TableCell className="p-2 text-right border-r border-b border-slate-700 bg-slate-800">{formatMZN(displayedLines.reduce((s: any, c: any) => s + Number(c.holiday_amount || 0), 0))}</TableCell>

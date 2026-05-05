@@ -1,0 +1,478 @@
+
+LANDCO LODGE ACCOUNTING SYSTEM
+Vilankulo, Mozambique
+
+APPLICATION REPAIR & IMPROVEMENT PLAN
+Comprehensive Technical Report for Agentic Implementation
+
+Report Date3 May 2026Version1.0Prepared forLandco Lodge Lda — Owners H1–H4StackReact/Vite/TypeScript + PostgreSQL + DockerHostingDocker Desktop (Windows) — local LAN
+
+
+Table of Contents
+
+
+
+
+1. Business Context and Purpose
+This section documents the business reality of Landco Lodge as understood from the 'Lanco explained' document and the supplementary 'Update the page with Andrisa' document. A correct understanding of the business is essential before any technical repair work is attempted.
+1.1 Ownership Structure
+Landco Lodge Lda is a property and hospitality group located in Vilankulo, Mozambique. The company is owned by four private individuals — referred to in the system as H1, H2, H3, and H4. Each owner holds a private home on the shared property and is linked to a specific named house:
+
+CodeHouse NameOwner NameBoats / AssetsH1Casa LuzTaffy (Luz Tafy)Negu (shared with H4)H2Casa AuroraWarren Stead (Rock Steady)—H3Casa CajuAlex Themistocleous (Kevin/Alex)Kraken, UndercoverH4Casa CocoWarren CohenNegu (shared with H1)
+A fifth property code, NEGU, represents the shared boat asset co-owned by H1 and H4. There is also a category called 'Com' (Communal) covering shared infrastructure, communal workers, and shared costs such as electricity, taxes, vehicles, and general maintenance.
+1.2 Income Reality vs. Official Income
+The real income of Landco consists entirely of cash injections from the four house owners. These funds enter the accounting system in several ways:
+• Cash deposits into official bank accounts (MZN or USD)
+• Black-market currency conversion from USD to MZN, followed by deposit as petty cash or bank credit
+• Direct cash inputs to the petty cash box
+
+Because Mozambican tax law would classify all such owner contributions as taxable income if no other income source is demonstrated, the company generates invoices for accommodation and boat-trip rental. These invoices are 'dummy' invoices — their purpose is to satisfy the official accountant BDO and the Mozambican Receiver of Revenue (Autoridade Tributária de Moçambique, AT) by presenting a tourism-based income stream. IVA (VAT) shown on these invoices is then offset against IVA on official supplier expenses, with the balance paid to the AT.
+IMPORTANT — Dual Accounting System:
+The application maintains two parallel accounting realities. The 'official' books show income from invoices and record only expenditures with official supplier documentation. The 'unofficial' books capture the true flow of owner funds into and out of the system, including cash expenses that cannot be supported by official supplier invoices (local materials, temporary labour, fuel for boats, imported spare parts, informal food suppliers). This report designs the application to support both realities clearly and separately.
+1.3 Expense Classification
+Expenses fall into two broad categories:
+• Official expenses: Documented with registered supplier invoices; processed through the Expense Payments module; submitted to BDO for official accounting. IVA on these is recoverable.
+• Unofficial (informal) expenses: Paid in cash (petty cash or informal cash); no official invoice available; not recoverable for IVA purposes; tracked in the system for owner reporting only, not for the AT.
+
+Employees are split between those assigned to a specific house (H1–H4) and communal staff (guards, manager, gardener) assigned to the property as a whole. Salaries, advances, and statutory payments (INSS employer/employee contributions and IRPS income tax) are formally processed via BDO each month.
+1.4 Reporting Objectives
+The application must produce two categories of output:
+• BDO Output Files: Monthly data formatted for the official accountant, covering income (dummy invoices), documented expense payments, payroll, bank movements. These must reconcile with the AT submissions.
+• Owner Reports: Per-owner (H1–H4) monthly statements showing opening balance, money contributed (deposits), money spent (communal and personal expenses), and closing balance. These reports are private and not submitted to any authority.
+
+Additionally, a comparison report must show the difference between dummy invoice totals and real owner-contributed income, so management can verify that the invoicing strategy is functioning as intended.
+
+
+2. Current Application State Assessment
+This section documents what exists in the Docker application as of May 2026, based on analysis of the full source code, database schema, docker-compose configuration, and all project documentation.
+2.1 Infrastructure Overview
+
+ComponentTechnologyContainerPortStatusFrontendReact 18 + Vite + TypeScript + Tailwind/shadcnlanacc-web8080RunningAPINode.js / Express.jslanacc-api4000RunningDatabasePostgreSQL 17 (Alpine)lanacc-db5432RunningDB AdminpgAdmin 4lanacc-pgadmin5050Available
+The application is started using 'docker compose --env-file .env.local up -d --build' from the project folder (C:\Users\Andrisa\Documents\Projects\Landco). Secrets are managed via .env.local which must never be committed to source control.
+2.2 Database Schema State
+The database (landco_v2_db) contains a comprehensive schema of more than 30 tables across four release generations:
+
+Table GroupTablesReference Dataproperties, shareholders, employees, bank_accounts, expense_categories, exchange_ratesTransactionsincome_transactions, expense_transactions, bank_transactions, petty_cash_transactionsPayrollsalary_runs, salary_lines, salary_advances, bim_salary_transfers, inss_payments, irps_paymentsShareholdershareholder_balancesAccounting (R1)journal_entries, journal_lines, accounts (chart of accounts), accounting_periodsReporting (R2)budgets; supplier_invoices extended with due_date, paid_amount, statusWorkflow (R4)fixed_assets, depreciation_schedule, inventory_items, inventory_movements, bank_reconciliations, fx_revaluations, document_attachments, approval workflow columns, audit_logSystemprofiles, user_roles, import_log, company_settings
+2.3 Data Seeded
+Reference data that is confirmed seeded as of the last status report (April 2026):
+• 21 employees with name, category, house assignment, base salary, food allowance
+• 5 properties: H1 Casa Luz, H2 Casa Aurora, H3 Casa Caju, H4 Casa Coco, NEGU
+• 4 shareholders: Taffy, Stead/Warren, Kevin/Alex, Cohen
+• 20 expense categories
+• 3 bank accounts: BDO MZN, BDO USD, BIM MZN
+
+Transaction tables are partially populated. Historical import of January–March 2026 data from the Excel spreadsheets has been attempted but import accuracy is uncertain. April 2026 data is incomplete. All imported data must be verified against source Excel files before the application can be considered reliable.
+2.4 Application Pages — Inventory
+
+RoutePageState/authAuthentication (login/signup)Working/Dashboard — KPI cards, chartsPartially functional; exchange rate not editable/transactionsTransactions — income, expenses, bank, petty cash tabsDisplay only; no CRUD/uploadUpload Data — Excel importExists; parsers need verification/employeesEmployees registerRead-only display/payrollPayroll — salary runsComplex page; correctness unverified/propertiesProperties listBasic display/shareholdersShareholder list with balancesDisplay only/accounting/ledgerAccount LedgerRelease 1; needs data/accounting/trial-balanceTrial BalanceRelease 1; needs data/accounting/periodsAccounting PeriodsRelease 1; admin only/accounting/accountsChart of AccountsRelease 1; editable/accounting/statementsFinancial Statements (P&L, BS, CF)Release 2; needs correct income source/accounting/budgetsBudget entry and varianceRelease 2/accounting/party-ledgersCustomer and Supplier aging ledgersRelease 2/accounting/fixed-assetsFixed Assets + depreciationRelease 4/accounting/inventoryInventory (WAC)Release 4/accounting/bank-reconciliationBank ReconciliationRelease 4/accounting/fx-revaluationFX RevaluationRelease 4/accounting/approvalsExpense Approval WorkflowRelease 4/accounting/audit-logAudit Log (admin)Release 4/accounting/journalJournal EntriesRelease 1/accounting/suspenseSuspense ReviewRelease 1/reportsReportsPartially built/shareholder-reportsShareholder ReportsPartially built/cash-controlCash ControlPresent/expense-paymentsExpense PaymentsNeeds Phase 1 update per Andrisa doc/account-mappingAccount Mapping (PGC)Present/settingsSettingsPresent; exchange rate editable here needed/database-backupDatabase BackupPresent
+2.5 Known Problems Identified
+The following issues have been identified from direct analysis of the source code and documentation:
+2.5.1 Income Source Error — Critical
+The most serious accounting error in the current system: income_transactions are currently populated using the dummy invoice system. Financial statements (P&L, shareholder balances) therefore report fabricated income figures. The true income source — owner cash deposits — has been identified in the Excel 'INCOME' sheets of the monthly 'MONTH END' files, but these have never been correctly parsed and loaded into a dedicated table. This error propagates to all P&L and shareholder balance calculations.
+2.5.2 Exchange Rate Not Editable on Dashboard
+The Exchange Rate field displayed on the Dashboard landing page is not connected to an editable data source. Users cannot update the MZN/USD rate from the dashboard. The Settings and Properties pages should also allow rate management per year. This means all USD/MZN conversions displayed in the application are stale or incorrect.
+2.5.3 Expense Payments Page — Incomplete
+Per the Andrisa requirements document, the Expense Payments page is missing several required fields and behaviours: 'Amount' label still shows '(MZN)' suffix; Expense Category is not linked to Account Mapping; Expense Target (H1/H2/H3/H4/Com/Negu) is missing; Payment Source dropdown linking to cash and bank accounts is missing; Supplier field is missing; the Recent Expense Payments list lacks a period filter, has incorrect column headings, and lacks a totals row.
+2.5.4 Dual-Mode Confusion (Supabase Cloud vs Local)
+The codebase contains references to both Supabase Cloud (neakxehuonsrlvjrxhnd.supabase.co) and the local Docker PostgreSQL stack. The sync mechanism between cloud and local has had documented sync failures (FIX_SYNC.md). The current live environment is local Docker, but the code still carries Supabase client configuration pointing at the cloud. This creates a risk of data being written to the wrong backend.
+2.5.5 Journal Entry Backfill Not Confirmed
+Release 1 introduced auto-posting triggers for double-entry bookkeeping. However, all data imported before those triggers were applied does not have corresponding journal entries. The backfill script (scripts/backfill-journal.mjs) must be run against the local database, but it is not confirmed whether this has been done. The Trial Balance will be incorrect until this is verified.
+2.5.6 Import Accuracy Unverified
+The parsers for Month End, Petty Cash, BDO Bank, Salary, and BIM files have been written but their accuracy against the actual Excel source files has not been systematically verified. January–March 2026 data may contain parsing errors, mismatched employee names, wrong category assignments, or missed rows.
+2.5.7 Sources / Cash Account Dashboard Missing
+The Andrisa document specifies a 'Sources' dashboard giving access to four financial account pages: Cash Box, Cheque Account (MZN), Cheque Account (USD), Debit Card (MZN). This dashboard does not yet exist. Without it, the link between payment sources and expense payments cannot be tracked or balanced.
+2.5.8 Landco Income Page Missing
+A dedicated 'Landco Income' page showing the real owner-contributed income from the MONTH END Excel INCOME sheets does not yet exist. This page is required to make the true income visible, editable, and integrated into all financial calculations.
+2.5.9 All Screens Read-Only
+Outside of the Upload and Settings pages, the application has no CRUD capability. Users cannot edit, correct, or delete individual transaction records. This is a significant operational gap.
+2.5.10 Shareholder Balance Calculations Broken
+Shareholder balance calculations depend on correct income source data (which is wrong — see 2.5.1) and on per-owner expense attribution. The Expense Target field (H1–H4, Com, Negu) is missing from the Expense Payments page, so expenses cannot be correctly attributed to owners.
+
+
+3. Repair and Improvement Plan
+The plan is organised into six phases in priority order. Phases 1 and 2 address critical data integrity issues that affect every other part of the system. Phases 3–6 deliver the new functionality described in the Andrisa requirements document and complete the application roadmap.
+Each task is described in sufficient detail for an autonomous agentic system to implement it without additional clarification. File paths, table names, field names, and expected behaviours are specified precisely.
+
+Phase 1 — Critical Data Integrity Repairs
+These tasks must be completed first. All subsequent work depends on correct data.
+
+Task 1.1 — Verify and Fix Backend Connection Mode
+PROBLEM: The .env and .env.local files contain both cloud Supabase URLs and local PostgreSQL credentials. The Supabase client in src/integrations/supabase/client.ts is pointed at the cloud project neakxehuonsrlvjrxhnd.supabase.co. The API server (api/server.js) connects to the local PostgreSQL via DATABASE_URL. This split means the React frontend talks to Supabase Cloud while the API backend talks to local Docker PostgreSQL — a bifurcated architecture that causes data inconsistency.
+ACTION: Decide on a single backend and enforce it throughout.
+• RECOMMENDED APPROACH: Use local PostgreSQL (lanacc-db) as the single data store. Remove all Supabase Cloud calls from the frontend. Replace supabase.from(...) queries in React components and hooks with REST API calls to the local Express API (http://localhost:4000). The API already exposes routes for backup, sync, cash control, invoices, journal, reports, and sync.
+• ALTERNATIVE: If Supabase Cloud is preferred, configure the local Docker DB to sync fully to cloud and remove the local API backend. This is more complex but allows Supabase Auth and RLS to function as designed.
+• IMMEDIATE STEP: Run the following command to confirm which database is receiving writes: docker exec lanacc-db psql -U postgres -d landco_v2_db -c "SELECT COUNT(*) FROM income_transactions;" — and compare to the Supabase Cloud count. Whichever has more data is the current live database.
+
+Task 1.2 — Run Journal Entry Backfill
+PROBLEM: All transaction data imported before Release 1's auto-posting triggers were applied does not have journal entries. The Trial Balance is therefore incomplete and unreliable.
+ACTION: Execute the backfill script against the local database:
+    docker exec -it lanacc-api node /app/scripts/backfill-journal.mjs
+Verify completion by running: SELECT COUNT(*) FROM journal_entries; — this should equal the total number of income, expense, bank, and petty-cash transactions. Any rows where journal_entry_id IS NULL in source tables indicate unmapped PGC codes. Resolve these via the Account Mapping page, then re-run the backfill script.
+
+Task 1.3 — Fix Exchange Rate: Make It Editable
+PROBLEM: The exchange_rates table exists in the database and the exchange_rates reference is present in the schema. However the Dashboard KPI card showing 'Exchange Rate' is display-only and not connected to this table. Settings page also does not expose rate management.
+ACTION:
+• In src/pages/Dashboard.tsx: Replace the static exchange rate display with a component that reads the most recent row from the exchange_rates table for the current year. Add an edit button (admin only) that opens an inline edit field allowing the rate to be saved back to exchange_rates.
+• In src/pages/Settings.tsx: Add an 'Exchange Rates' section listing all year/month rate entries from the exchange_rates table. Provide Add, Edit, Delete controls (admin only).
+• The exchange_rates table columns are: id, month (int), year (int), mzn_per_usd (numeric), mzn_per_zar (numeric), created_at. Ensure the CRUD API endpoint exists at api/routes or add a new route.
+• Wherever USD amounts are displayed alongside MZN in the application, the conversion must use the rate from exchange_rates for the relevant month/year, not a hardcoded constant.
+
+Task 1.4 — Verify and Correct All Import Data (Jan–Apr 2026)
+PROBLEM: The parsers for Month End, Petty Cash, BDO Bank, Salary, and BIM files have been written but their accuracy is unverified. Data for January–March is loaded; April is incomplete.
+ACTION — Verification Protocol:
+1. For each month (January to April 2026), open the source Excel files from the Landco_Accounts_2026 zip and manually extract the totals for: total income deposits per house (H1–H4), total expenses per category, total petty cash balance, and total net salary payable.
+2. Run SQL aggregate queries against the database tables to extract the same totals for each month.
+3. Where totals differ, identify the discrepancy: either the parser missed rows, misread cell values, or incorrectly mapped categories/employees/properties.
+4. Fix the parsers in src/lib/parsers/ as needed. Re-import the affected month's data after clearing existing rows for that month to avoid duplicates. The import_log table records all imports with month, year, and file type — use this to identify what was imported.
+5. After verification is complete for all months, mark each month's data as 'verified' by adding a verification flag or note to the import_log table.
+
+Phase 2 — Real Income Implementation
+This phase replaces the fundamentally incorrect income source with the real data from the owner deposit records.
+
+Task 2.1 — Create the landco_income Table
+ACTION: Create a new database table to store real owner contributions, separate from the dummy invoice table. Run this migration via the database:
+Table name: landco_income
+Columns:
+• id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+• period_month INTEGER NOT NULL (1–12)
+• period_year INTEGER NOT NULL
+• property_code TEXT NOT NULL (H1, H2, H3, H4, Com, Negu)
+• description TEXT
+• amount_mzn NUMERIC(15,2) NOT NULL DEFAULT 0
+• amount_usd NUMERIC(15,2) DEFAULT 0
+• exchange_rate_used NUMERIC(10,4) — rate at time of entry
+• amount_mzn_equivalent NUMERIC(15,2) — USD converted to MZN
+• source TEXT — e.g. 'Cash Deposit', 'Bank Transfer', 'USD Black Market'
+• deposit_date DATE
+• notes TEXT
+• journal_entry_id UUID REFERENCES journal_entries(id)
+• created_at TIMESTAMPTZ DEFAULT NOW()
+• created_by UUID REFERENCES profiles(id)
+Add RLS policies matching the pattern of other transaction tables (admin: full CRUD, authenticated: read-only).
+Add an auto-posting trigger trg_auto_post_landco_income that creates a balanced journal entry on INSERT: Debit Cash/Bank account (asset), Credit Owner Equity / Shareholder Capital account.
+
+Task 2.2 — Build Landco Income Parser
+ACTION: Create a new parser file at src/lib/parsers/landcoIncomeParser.ts that reads the INCOME tab from the monthly MONTH END Excel files.
+The INCOME sheet structure (from the Andrisa document and file naming pattern):
+• Row 1: Heading row (may span merged cells)
+• Subsequent rows: One row per owner deposit event, with columns for each house code (H1, H2, H3, H4) containing the MZN amount
+• A total row at the bottom or in a 'totals' column
+The parser must:
+6. Read all rows from the INCOME sheet
+7. For each row, extract the deposit date, description, and amounts per house code
+8. Return an array of landco_income records ready for database insertion
+9. Handle merged cells and irregular row structures gracefully
+Add the new file type 'Landco Income (Month End INCOME sheet)' to the Upload Data page (src/pages/UploadData.tsx) FILE_TYPES array. Add the corresponding case to the handleFileSelect and handleImport switch statements in UploadData.tsx and in src/lib/importService.ts.
+
+Task 2.3 — Create Landco Income Page
+ACTION: Create src/pages/LandcoIncome.tsx — a new page accessible at route /landco-income.
+Page features:
+• A month/year selector at the top to choose which month to view
+• A table displaying all rows for the selected month, with columns: Date, Property (H1–H4/Com/Negu), Description, Amount MZN, Amount USD, Exchange Rate, MZN Equivalent, Source, Notes
+• Row-level edit capability: clicking an Edit button on a row opens an inline edit mode for all fields in that row, with Save and Cancel buttons
+• A Delete button per row with a confirmation dialog
+• A footer row showing column totals for Amount MZN and MZN Equivalent
+• An 'Add Row' button opening a modal form for entering a new income record
+• A 'Recalculate' button that refreshes totals and any derived values
+• The Exchange Rate shown in the header of this page must reflect the rate stored in exchange_rates for the selected month/year
+• A summary panel per house code showing totals for the selected month in both MZN and USD
+Add the route /landco-income to src/App.tsx inside the ProtectedRoutes section. Add a 'Landco Income' menu item to src/components/AppSidebar.tsx.
+
+Task 2.4 — Remove Dummy Invoices from Financial Calculations
+ACTION: The income_transactions table and the Invoices page can remain in the system (they are needed for the BDO reporting function), but they must be EXCLUDED from all internal financial calculations.
+Specifically:
+• In src/pages/FinancialStatements.tsx: P&L Revenue must be calculated from landco_income, NOT from income_transactions or invoices.
+• In src/pages/Dashboard.tsx: All income KPI cards must source from landco_income.
+• In src/pages/ShareholderReports.tsx and shareholder_balances: Shareholder income must come from landco_income filtered by property_code.
+• In the double-entry journal: income from invoices was posted using account type 'revenue'. Add a new dedicated account (e.g. PGC code 7100 — Owner Capital Contributions) and ensure landco_income entries are posted to this account, not the invoice revenue accounts.
+• Everywhere income_transactions.accommodation_amount_mzn is currently summed for display, replace or supplement with a query to landco_income.
+
+Task 2.5 — Invoice vs Real Income Comparison Report
+ACTION: Add a comparison widget to a suitable location (the Dashboard, or the Landco Income page, or a new Reports subsection).
+The widget must show:
+• Total Invoice Income (from invoices table or income_transactions) for the selected period
+• Total Real Owner Income (from landco_income) for the same period
+• Difference amount
+• A colour indicator: green if difference is zero, red if the difference is non-zero (invoices do not balance real income)
+This comparison is critical for management to verify that the invoicing strategy is correctly structured.
+
+
+Phase 3 — Expense Payments Page Upgrade (Andrisa Specification)
+This phase implements all changes specified in the 'Update the page with Andrisa' document, Phase 1.
+
+Task 3.1 — Update Expense Payments Field Labels and Validation
+In src/pages/ExpensePayments.tsx:
+• Remove '(MZN)' from the 'Amount (MZN)' label — change to simply 'Amount'. Ensure the field still validates and stores two decimal places.
+• Connect 'Expense Category' dropdown to the account_mapping / expense_categories table via a live query, showing all active categories. If a suitable edit popup already exists in Account Mapping, reference it; otherwise, add an inline 'Add Category' option that saves a new category to the database.
+
+Task 3.2 — Add Expense Target Field
+Add a new column expense_target TEXT to expense_transactions (if not already present). Valid values: H1, H2, H3, H4, Com, Negu.
+In the Expense Payments form, add a 'Expense Target' dropdown with options: H1, H2, H3, H4, Com, Negu. This field identifies which owner's account the expense is charged to. It is mandatory for correct shareholder balance calculation.
+Store the selected value in expense_transactions.expense_target. Update the shareholder_balances calculation logic to join on this field.
+
+Task 3.3 — Add Payment Source Field
+Add a new column payment_source TEXT to expense_transactions. Valid values match the sources in the Sources dashboard (see Phase 4):
+• Petty Cash Formal
+• Petty Cash Informal
+• MZN Cheque Account
+• MZN Debit Card
+• USD Cheque Account
+In the Expense Payments form, add a 'Payment Source' dropdown with these five options. This field must link the expense payment to the corresponding account in the Sources dashboard, enabling the cash accounts to be balanced against outgoing expenses.
+
+Task 3.4 — Add Supplier Field
+Add a new column supplier TEXT to expense_transactions. In the Expense Payments form, add a single-line text input 'Supplier' between the Description and Reference fields. No validation required; free text.
+
+Task 3.5 — Update Recent Expense Payments List
+In the lower portion of the Expense Payments page (the 'Recent Expense Payments' table):
+• Add a period filter: a dropdown offering 1 month, 2 months, 3 months. Default to 1 month. The list refreshes to show expenses within the selected number of months from today.
+• Column headings must be: Date, Supplier, Description, Reference, Expense Category, Source, Amount.
+• Add a totals row at the bottom of the Amount column showing the sum of all visible amounts.
+• Ensure all five existing columns (Date, Description, Reference, Expense Category, Amount) plus the two new columns (Supplier, Source) are displayed.
+
+Task 3.6 — Update Help Popups
+Per the Andrisa document requirement: every update and addition to the application must include updated help (?) popup content in both English and Portuguese. For all fields added or modified in Phase 3 (Tasks 3.1–3.5):
+• Add or update the HelpPopover component content in src/components/HelpPopover.tsx and in src/lib/helpContent.ts.
+• English explanation: describe the purpose and valid values of the field.
+• Portuguese explanation: provide the same content in Portuguese (Mozambican context).
+
+
+Phase 4 — Sources Dashboard (Cash and Bank Accounts)
+This phase implements the 'Sources' menu section specified in the Andrisa document, Phase 2.
+
+Task 4.1 — Create Sources Database Tables
+Create the following tables if not already present:
+Table: cash_box_transactions
+• id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+• account_owner TEXT NOT NULL — H1, H2, H3, H4, Com, Negu
+• reference_no TEXT
+• description TEXT
+• category_id UUID REFERENCES expense_categories(id)
+• deposited_amount NUMERIC(15,2) DEFAULT 0
+• deposit_method TEXT — cash, transfer, exchange
+• withdrawn_amount NUMERIC(15,2) DEFAULT 0
+• balance NUMERIC(15,2)
+• transaction_date DATE
+• notes TEXT
+• created_at TIMESTAMPTZ DEFAULT NOW()
+Create similar tables for: cheque_account_mzn_transactions, cheque_account_usd_transactions, debit_card_mzn_transactions. Each follows the same column structure.
+Add RLS policies consistent with all other transaction tables.
+
+Task 4.2 — Create Sources Pages
+Create four new page files in src/pages/:
+• CashBox.tsx — route /sources/cash-box
+• ChequeAccountMZN.tsx — route /sources/cheque-mzn
+• ChequeAccountUSD.tsx — route /sources/cheque-usd
+• DebitCardMZN.tsx — route /sources/debit-mzn
+Each page must:
+• Display all transactions for the corresponding account in a table with columns: Account Owner, Reference No, Description, Category, Deposited, Method, Withdrawn, Balance
+• Show running balance calculated as (previous balance + deposited - withdrawn) per row
+• Support Add, Edit, Delete per row (admin only)
+• Filter by Account Owner (H1/H2/H3/H4/Com/Negu) and by date range
+• Display a summary footer showing total deposited, total withdrawn, and current balance
+
+Task 4.3 — Create Sources Dashboard Page
+Create src/pages/Sources.tsx — route /sources. This page acts as a hub showing a summary card for each of the four source accounts:
+• Card title: Cash Box / Cheque Account (MZN) / Cheque Account (USD) / Debit Card (MZN)
+• Card content: Current balance, total deposits this month, total withdrawals this month
+• Clicking a card navigates to the corresponding detail page
+Add 'Sources' to the left sidebar navigation (src/components/AppSidebar.tsx) with a sub-menu expanding to the four account pages.
+
+Task 4.4 — Link Payment Source to Expense Payments
+When a user selects a Payment Source on the Expense Payments form and saves a new expense, the application must automatically create a corresponding withdrawal record in the appropriate Sources account table. This creates a double-sided audit trail: the expense is recorded in expense_transactions and the cash outflow is recorded in the source account.
+This linkage can be implemented as a database trigger or as application-level logic in the API route handling expense_transactions INSERT.
+
+
+Phase 5 — CRUD and Data Editing Across All Pages
+Currently the application is almost entirely read-only. Users cannot correct import errors, adjust values, or manage reference data through the UI. This phase adds edit capability systematically.
+
+Task 5.1 — CRUD for Income Transactions (Invoices)
+In src/pages/Transactions.tsx (Income tab) and/or src/pages/Invoices.tsx:
+• Add Edit button per row, opening an inline or modal form for all fields
+• Add Delete button with confirmation dialog
+• Add New Record button for manual invoice entry
+• Ensure all changes trigger journal entry updates (update or reverse and repost)
+
+Task 5.2 — CRUD for Expense Transactions
+In src/pages/ExpensePayments.tsx and Transactions.tsx (Expenses tab):
+• Add Edit and Delete per row, consistent with Task 5.1
+• Include all Phase 3 fields (Expense Target, Payment Source, Supplier) in the edit form
+
+Task 5.3 — CRUD for Bank Transactions
+In src/pages/Transactions.tsx (Bank tab):
+• Add Edit, Delete, and New Record controls
+• Bank transactions should reference the bank_accounts table for account selection
+
+Task 5.4 — CRUD for Petty Cash Transactions
+In src/pages/Transactions.tsx (Petty Cash tab):
+• Add Edit, Delete, and New Record controls
+• Running balance should recalculate on any change
+
+Task 5.5 — CRUD for Employees
+In src/pages/Employees.tsx:
+• Add Edit per employee to update: name, NIB, NUIT, base salary, food allowance, category, house assignment, status (active/inactive)
+• Add Delete (soft delete with is_active flag, not hard delete, to preserve payroll history)
+• Add New Employee button and form
+
+Task 5.6 — CRUD for Payroll
+In src/pages/Payroll.tsx:
+• Allow admin to create a new salary run for a given month/year
+• Allow editing of individual salary lines (adjusting days worked, overtime, advances)
+• Auto-recalculate gross, IRPS, INSS, and net on any change
+• Allow adding/removing salary advances against a run
+• Add INSS and IRPS payment recording (date, amount, reference) linked to the salary run
+
+Task 5.7 — Duplicate Import Detection
+In the Upload Data page (src/pages/UploadData.tsx), before executing any import:
+• Query the import_log table for any existing import with the same file_type, month, and year
+• If a duplicate is found, display a warning modal: 'Data for [month/year] of type [file type] has already been imported. Importing again will create duplicates. Do you want to clear the existing data first and re-import?'
+• Provide three options: Cancel, Clear and Re-import, Import Anyway (append)
+
+
+Phase 6 — Reporting and Owner Statements
+
+Task 6.1 — Fix Shareholder Balance Calculations
+The shareholder_balances table stores per-owner monthly opening balance, income, expenses, and closing balance. Currently this calculation is incorrect because:
+• Income is sourced from dummy invoices, not landco_income
+• Expenses are not attributed to owners (expense_target field missing)
+After Phases 2 and 3 are complete:
+• Create or update a database function fn_calculate_shareholder_balance(property_code, month, year) that: sums landco_income for the property_code and period; sums expense_transactions where expense_target = property_code and period matches; adds the opening_balance from the previous month's row; computes closing_balance = opening_balance + income - expenses.
+• Call this function to regenerate all shareholder_balances rows from January 2026 onwards.
+• Add a 'Recalculate Balances' button on the Shareholders page (admin only) that triggers this recalculation.
+
+Task 6.2 — Owner Monthly Statement Report
+Create or update src/pages/ShareholderReports.tsx to produce a printable/exportable monthly statement per owner showing:
+• Owner name and house name
+• Period (month and year)
+• Opening balance (MZN and USD equivalent)
+• Income: list of all landco_income entries for this owner for the period, with date, description, amount MZN, amount USD
+• Total income for period
+• Expenses: list of all expense_transactions attributed to this owner (expense_target = H1/H2/H3/H4), with date, supplier, description, category, payment source, amount
+• Communal expenses allocation: this owner's proportional share of communal expenses (Com), calculated as 25% (equal share among 4 owners)
+• Total expenses for period
+• Closing balance (opening + income - total expenses)
+• PDF export button using the browser print dialog or a PDF library
+
+Task 6.3 — BDO Output Report
+Create a dedicated BDO Export page or section within Reports that produces data formatted for the external accountant BDO:
+• Monthly income summary from the invoices/income_transactions table (the dummy invoices — these are what BDO sees)
+• Monthly expense summary of official (documented) expense_transactions with supplier invoices
+• Payroll summary: total gross salary, total IRPS withheld, total INSS (employer and employee)
+• Bank account summary: BDO MZN and BDO USD opening/closing balances and movements
+• Export to Excel format consumable by BDO's accounting software
+
+Task 6.4 — Cash Control Reports Enhancement
+The existing src/pages/CashControlReports.tsx needs updating to reflect the new Sources account structure. Ensure:
+• Cash Box balance reconciles with the cash_box_transactions table
+• Petty Cash totals reconcile with petty_cash_transactions
+• A monthly cash flow summary is available showing all cash movements by source
+
+Phase 7 — Polish and Non-Critical Improvements
+These items are important but not blocking. Implement after Phases 1–6 are stable.
+
+TaskDescriptionPriorityHelp content updateFor every page and field added or modified in Phases 2–6, update HelpPopover content in both English and Portuguese per the Andrisa requirement.HighApril 2026 data completionComplete the import of April 2026 data for all file types once the source Excel files are finalized.HighAccounting period close flowImplement the month-end close workflow: review Suspense account, reclassify entries, close the period in Periods page.MediumFixed asset depreciationTest and verify the fn_post_depreciation_month() function produces correct journal entries for any fixed assets registered.MediumBank reconciliation workflowThe bank_reconciliation page exists (Release 4). Verify it correctly matches bank_transactions to statement lines.MediumFX RevaluationImplement and test the FX revaluation page for USD-denominated balances using the exchange rates table.MediumAudit log reviewEnable the actor_id wiring in api/server.js per the Release 4 documentation so all database writes are attributed to the logged-in user.MediumApproval workflow for large expensesVerify the approval_threshold_mzn in company_settings and test the approve/reject flow on the Approvals page.LowOCR attachmentTest the ocr-attachment Supabase Edge Function with a real PDF upload. Note: this requires the Supabase Cloud project to be active.LowGoogle OAuth loginAdd Google OAuth as a sign-in option via Supabase Auth configuration.Low2FA for adminsEnable TOTP-based 2FA for admin accounts.LowPDF export stylingAdd print stylesheets and PDF export buttons to all report pages.Low
+
+
+4. Recommended Implementation Sequence
+The following sequence is designed for an agentic implementation system. Each session should complete at least one full task before stopping. Dependencies are noted — do not skip ahead.
+
+SessionTasksDependenciesEstimated Effort1Task 1.1 — Decide and fix backend connection modeNone — first thing to establish1–2 hours2Task 1.2 — Run journal backfill; Task 1.3 — Fix exchange rate editingTask 1.1 must be complete1–2 hours3Task 1.4 — Verify import data Jan–Mar 2026; fix parser bugsTask 1.1 complete3–5 hours4Task 2.1 — Create landco_income table; Task 2.2 — Build income parserTask 1.3 complete2–3 hours5Task 2.3 — Create Landco Income page; Task 2.4 — Import Jan–Apr income dataTasks 2.1, 2.2 complete2–3 hours6Task 2.4 — Remove invoices from financial calcs; Task 2.5 — Comparison widgetTask 2.3 complete; data verified2–3 hours7Tasks 3.1–3.5 — Expense Payments page upgradeTask 2.4 complete (expense_target needed)2–4 hours8Task 3.6 — Update all help popups for Phase 3Tasks 3.1–3.5 complete1–2 hours9Tasks 4.1–4.3 — Sources tables and pagesTask 3.3 complete (payment_source field)3–4 hours10Task 4.4 — Link payment source to expense paymentsTasks 4.1–4.3 complete1–2 hours11Tasks 5.1–5.4 — CRUD for all transaction tablesPhases 1–4 complete4–6 hours12Tasks 5.5–5.7 — CRUD for employees, payroll; duplicate detectionTask 5.1 patterns established3–4 hours13Tasks 6.1–6.2 — Shareholder balance recalc and owner statementsPhases 2–5 complete3–4 hours14Tasks 6.3–6.4 — BDO export report; cash control enhancementTask 6.1 complete2–3 hours15Phase 7 — Polish, help content, remaining improvementsPhases 1–6 completeOngoing
+
+
+5. Technical Reference
+5.1 Key File Locations
+
+File / DirectoryPurposesrc/App.tsxAll client-side routes — add new routes heresrc/components/AppSidebar.tsxLeft navigation sidebar — add new menu items heresrc/pages/One file per page/routesrc/lib/parsers/Excel import parsers — one per file typesrc/lib/importService.tsDatabase insertion logic for all import typessrc/lib/helpContent.tsAll help popup text content (English and Portuguese)src/integrations/supabase/client.tsSupabase client configuration — do not edit manuallysrc/integrations/supabase/types.tsAuto-generated TypeScript types — do not edit manuallyapi/server.jsExpress API server — main entry pointapi/routes/Express route handlers — one per domaindb/init/01_schema_full.sqlComplete database schema for fresh installsdb/migrations/Incremental migrations for existing installsdb/seed/demo_data.sqlReference data seed SQLscripts/Utility scripts: backup, clone, update, admin management.env.localSecret configuration — never commit; required for Docker startdocker-compose.ymlDocker service definitions
+5.2 Docker Commands Reference
+
+PurposeCommandStart the full stackdocker compose --env-file .env.local up -dStart and rebuild after code changedocker compose --env-file .env.local up -d --buildStop all containersdocker compose downView frontend logsdocker logs lanacc-web -fView API logsdocker logs lanacc-api -fView database logsdocker logs lanacc-db -fOpen database shelldocker exec -it lanacc-db psql -U postgres -d landco_v2_dbRun a SQL migrationdocker exec -i lanacc-db psql -U postgres -d landco_v2_db < migration.sqlRun journal backfilldocker exec -it lanacc-api node /app/scripts/backfill-journal.mjsRun backup scriptscripts\backup.bat (Windows) or docker exec lanacc-api node backup
+5.3 Application URLs
+
+ServiceURLApplication (local)http://localhost:8080Application (LAN)http://192.168.0.206:8080 (or current machine IP)APIhttp://localhost:4000pgAdminhttp://localhost:5050 (admin@landco.com / pgAdmin password from .env.local)
+5.4 Administrator Credentials
+
+Security Notice:
+The credentials below are taken from project documentation. Change all passwords in .env.local before operating on a production or internet-accessible system. The Supabase secret key and service role key must be treated as highly sensitive and never shared or committed to source control.
+AccountCredentialAdmin user 1andrisa.schnell@gmail.comAdmin user 2cwschnell@gmail.comAdmin signup PINAbcd7654$# (matches ADMIN_SIGNUP_PIN in .env.local)DB userpostgres (password in .env.local as POSTGRES_PASSWORD)pgAdmin emailadmin@landco.comSupabase Project IDneakxehuonsrlvjrxhnd
+5.5 Database Table Reference — Transaction Field Summary
+The following table summarises the key fields required on expense_transactions after the Phase 3 additions. Fields marked NEW must be added via a migration.
+
+FieldTypeStatusPurposeidUUIDExistingPrimary keydateDATEExistingTransaction datedescriptionTEXTExistingFree text descriptionamount_mznNUMERICExistingAmount in MZN (2 decimal places)is_sharedBOOLEANExistingTrue if communal expensecategory_idUUID FKExistingLinks to expense_categoriesproperty_idUUID FKExistingLinks to propertiesshareholder_idUUID FKExistingLinks to shareholdersmonthINTEGERExistingMonth of transactionyearINTEGERExistingYear of transactionjournal_entry_idUUID FKExistingLinks to journal_entriesapproval_statusTEXTExistingpending / approved / rejectedsupplierTEXTNEW (Phase 3)Supplier name (free text)expense_targetTEXTNEW (Phase 3)H1/H2/H3/H4/Com/Negu — owner attributionpayment_sourceTEXTNEW (Phase 3)Petty Cash Formal, MZN Cheque Acc, etc.referenceTEXTExistingReference number
+
+
+6. Appendix — Excel Source File Structure
+The following summarises the structure of the Excel files in the Landco_Accounts_2026 dataset. This information is required by the import parsers and by agents performing data verification.
+6.1 Monthly Folder Structure
+The Landco Accounts 2026 archive contains monthly subfolders:
+• 01 JAN ACCOUNTS — 01 JAN MONTH END 2026.xlsx, 01 Petty Cash PETTY CASH 2026.xlsx
+• 02 FEB ACCOUNTS — 02 FEB MONTH END 2026.xlsx, 02 Petty Cash PETTY CASH 2026.xlsx, Landco Expense Report Feb.xlsx
+• 03 MARCH ACCOUNTS — 03 MARCH MONTH END 2026.xlsx, 03 Petty Cash PETTY CASH 2026.xlsx, 03 COCO EMILY PETTY CASH 2026.xlsx
+• 04 APRIL ACCOUNTS — 04 MONTH END APRIL 2026.xlsx, multiple petty cash files per house (AURORA, CAJU, COCO EMILY, LANDCO)
+• BDO Accounts 2026 — 01 BDO Bank Control 2026.xlsx through 04 BDO Bank Control 2026.xlsx
+• Salaries Landco 2026 — 01–04 Salary sheet for Landco.xlsx plus advance salary PDFs and INSS/IRPS documents
+• Shareholders 2026 — Per-shareholder monthly workbooks (Aurora, Caju Kevin, Coco Cohen, Luz Tafy) for months 01–04
+• BIM Salaries 2026 — BIM salary transfer files (XLS and PDF) for each month
+• Cashing up — Safe 04 April 2026.xlsx
+
+6.2 Month End File Tabs
+Each MONTH END file contains the following sheets (tabs):
+• INCOME — Real owner deposit data: rows per deposit, columns per house (H1–H4), dates, descriptions, amounts in MZN and USD. This is the source for the landco_income table.
+• RECON — Bank reconciliation data comparing book balance to bank statement.
+• EXPENSES — Documented (official) expenses with supplier, date, description, category, amount. Source for expense_transactions (official subset).
+• EXPENSES HOUSE — House-specific (personal) expenses not submitted to the AT.
+• MONTHLY FOR THE YEAR — Year-to-date running totals per category, used for management reporting.
+
+6.3 Petty Cash File Structure
+Petty cash files contain multiple sheets, typically one per cash box or location. Each sheet has columns: DATE, DETAILS, CR (credit/income), DR (debit/expense), BAL (running balance). In April 2026, there are separate petty cash files per house (Aurora, Caju, Coco Emily, Landco).
+
+6.4 BDO Bank Control File Structure
+BDO Bank Control files contain bank statement data provided to BDO for official accounting. Columns typically include: date, description, reference, debit, credit, balance. One file per month covers the BDO MZN and BDO USD accounts.
+
+6.5 Salary Sheet Structure
+Salary sheets contain the full payroll calculation for one month:
+• 'Folha de salarios' sheet: employee name (col C), days worked, base salary (col H), overtime, allowances, gross total, IRPS deduction, INSS employee deduction, net salary, NIB
+• 'Sindicate' sheet: NIB numbers per employee used by the BIM salary transfer
+
+6.6 BIM Salary Transfer File
+BIM transfer files list the bank transfers to be made to each employee for their net salary via the BIM bank system. Columns: name (col C), NIB (col B), amount (col D).
+
+
+
+7. Instructions for the Implementing Agent
+This report is intended to be passed to an autonomous AI agent with sufficient compute and tool access to implement the plan. The following instructions ensure a smooth handoff.
+7.1 Starting Context
+Tell the implementing agent exactly the following context at the start of each session:
+
+I am continuing development of the LANACC / Landco Lodge Accounting project. The application is a React 18 / TypeScript / Vite frontend with a Node.js/Express API backend and PostgreSQL 17 database, all running in Docker Desktop on a Windows machine. The project folder is: C:\Users\Andrisa\Documents\Projects\Landco
+The current work session focuses on [INSERT PHASE AND TASK from this report]. A full repair plan document exists — please proceed with the specified tasks. All source files are available in the project folder. Database access is via: docker exec -it lanacc-db psql -U postgres -d landco_v2_db
+Do not modify .env.local or any secrets files. Do not commit to source control without explicit instruction. Verify all database changes with a test query before proceeding to the next task.
+7.2 Agent Rules
+• Always verify database table existence before writing migration SQL. Use: SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+• Always test import parsers against the actual January 2026 Excel files before declaring a parser correct.
+• When adding a new page, always update both App.tsx (route) and AppSidebar.tsx (navigation link) in the same session.
+• When modifying expense_transactions, always check whether the auto-posting trigger needs updating to handle the new fields.
+• After every database migration, run the journal backfill script to ensure no orphaned rows exist.
+• Update helpContent.ts and HelpPopover.tsx for every user-facing change — both English and Portuguese text are required.
+• Do not delete any existing data without first creating a database backup using the backup script.
+• Run a full Docker rebuild (docker compose --env-file .env.local up -d --build) after any code change to ensure the running containers reflect the latest code.
+
+7.3 Success Criteria
+The application can be considered successfully repaired when all of the following are true:
+10. The Exchange Rate field on the Dashboard is editable and the value is reflected in all currency conversions throughout the application.
+11. A dedicated Landco Income page exists showing owner deposit data imported from the INCOME sheets of the MONTH END Excel files, editable per row, with correct monthly totals.
+12. All P&L, Dashboard income figures, and Shareholder Reports source income from the landco_income table, not from dummy invoices.
+13. The Invoice vs Real Income comparison widget shows zero difference (or a clearly explained non-zero difference) for each completed month.
+14. The Expense Payments page includes Expense Target, Payment Source, and Supplier fields, with the Recent Expenses list showing correct columns and totals.
+15. The Sources dashboard exists with four account pages (Cash Box, Cheque MZN, Cheque USD, Debit Card MZN), each showing correct running balances.
+16. All transaction tables (income, expenses, bank, petty cash) have Add, Edit, and Delete capability in the UI.
+17. Shareholder monthly statements are calculable for each owner (H1–H4) and can be exported.
+18. A BDO export report can be generated for each completed month.
+19. The Trial Balance is balanced (sum of debits equals sum of credits) for all completed periods.
+20. All help (?) popups are updated with English and Portuguese text for every feature added.
+
+
+End of Report
+Landco Lodge Accounting System — Repair and Improvement Plan — Version 1.0 — May 2026
+LANDCO LODGE ACCOUNTING — REPAIR PLAN     |     May 2026     |     Confidential
+
+Page
+

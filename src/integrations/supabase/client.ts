@@ -46,16 +46,31 @@ async function http(path: string, init: RequestInit = {}) {
   return { data, error: null };
 }
 
-function buildLocalQuery(table: string) {
+function buildLocalQuery(table: string, selectCols: string = "*", options: { count?: string; head?: boolean } = {}) {
   const filters: Array<{ col: string; op: string; val: any }> = [];
   const order: Array<{ col: string; ascending: boolean }> = [];
   let limitN: number | null = null;
   let single = false;
+  const wantsCount = options.count === "exact";
+  const headOnly = options.head === true;
 
   const exec = async (): Promise<any> => {
     const res = await http(`/api/${table}`);
     if (res.error) return res;
     let rows: any[] = Array.isArray(res.data) ? res.data : [];
+
+    // Simple join simulation for Local Mode (since generic API doesn't support nested selects yet)
+    if (selectCols.includes("employees")) {
+      const { data: emps } = await http("/api/employees");
+      if (emps && Array.isArray(emps)) {
+        const empMap = new Map(emps.map((e: any) => [e.id, e]));
+        rows = rows.map(r => ({
+          ...r,
+          employees: r.employee_id ? empMap.get(r.employee_id) : null
+        }));
+      }
+    }
+
     for (const f of filters) {
       rows = rows.filter((r) => {
         const v = r[f.col];
@@ -80,9 +95,10 @@ function buildLocalQuery(table: string) {
         return o.ascending ? cmp : -cmp;
       });
     }
+    const count = rows.length;
     if (limitN != null) rows = rows.slice(0, limitN);
-    if (single) return { data: rows[0] ?? null, error: null };
-    return { data: rows, error: null };
+    if (single) return { data: rows[0] ?? null, error: null, count: wantsCount ? count : null };
+    return { data: headOnly ? null : rows, error: null, count: wantsCount ? count : null };
   };
 
   const chain: any = {
@@ -100,35 +116,47 @@ function buildLocalQuery(table: string) {
     maybeSingle: () => { single = true; return chain; },
     then: (resolve: any, reject: any) => exec().then(resolve, reject),
   };
+
   return chain;
 }
 
 function localFrom(table: string) {
   return {
-    select: (_cols?: string) => buildLocalQuery(table),
-    insert: async (rows: any | any[]) => {
+    select: (cols?: string, options?: { count?: string; head?: boolean }) => buildLocalQuery(table, cols || "*", options),
+    insert: (rows: any | any[]) => {
       const arr = Array.isArray(rows) ? rows : [rows];
-      const out: any[] = [];
-      for (const row of arr) {
-        const r = await http(`/api/${table}`, { method: "POST", body: JSON.stringify(row) });
-        if (r.error) return r;
-        out.push(r.data);
-      }
-      return {
-        data: Array.isArray(rows) ? out : out[0],
-        error: null,
-        select: () => Promise.resolve({ data: out, error: null }),
-        single: () => Promise.resolve({ data: out[0], error: null }),
+      const exec = async () => {
+        const out: any[] = [];
+        for (const row of arr) {
+          const r = await http(`/api/${table}`, { method: "POST", body: JSON.stringify(row) });
+          if (r.error) return r;
+          out.push(r.data);
+        }
+        return { data: Array.isArray(rows) ? out : out[0], error: null };
       };
+
+      const promise = exec();
+      const chain: any = {
+        select: (_cols?: string) => chain,
+        single: () => promise.then(res => ({ data: Array.isArray(res.data) ? res.data[0] : res.data, error: res.error })),
+        maybeSingle: () => promise.then(res => ({ data: Array.isArray(res.data) ? res.data[0] : res.data, error: res.error })),
+        then: (resolve: any, reject: any) => promise.then(resolve, reject),
+      };
+      return chain;
     },
     update: (patch: any) => {
       const filters: Array<{ col: string; val: any }> = [];
       const builder: any = {
         eq: (c: string, v: any) => (filters.push({ col: c, val: v }), builder),
+        in: (c: string, v: any[]) => (filters.push({ col: `__in_${c}`, val: v.join(",") }), builder),
         then: async (resolve: any, reject: any) => {
           const idFilter = filters.find((f) => f.col === "id");
-          if (!idFilter) return resolve({ data: null, error: { message: "local update requires .eq('id', ...)" } });
-          const r = await http(`/api/${table}`, { method: "PATCH", body: JSON.stringify({ id: idFilter.val, ...patch }) });
+          const qs = new URLSearchParams();
+          filters.forEach((f) => qs.append(f.col, String(f.val)));
+          const r = await http(`/api/${table}${qs.toString() ? `?${qs.toString()}` : ""}`, {
+            method: "PATCH",
+            body: JSON.stringify({ ...(idFilter ? { id: idFilter.val } : {}), ...patch }),
+          });
           resolve(r);
         },
       };
@@ -138,25 +166,27 @@ function localFrom(table: string) {
       const filters: Array<{ col: string; val: any }> = [];
       const builder: any = {
         eq: (c: string, v: any) => (filters.push({ col: c, val: v }), builder),
+        in: (c: string, v: any[]) => (filters.push({ col: `__in_${c}`, val: v.join(",") }), builder),
         then: async (resolve: any) => {
           const idFilter = filters.find((f) => f.col === "id");
-          if (!idFilter) return resolve({ data: null, error: { message: "local delete requires .eq('id', ...)" } });
-          const r = await http(`/api/${table}?id=${encodeURIComponent(idFilter.val)}`, { method: "DELETE" });
+          const qs = new URLSearchParams();
+          filters.forEach((f) => qs.append(f.col, String(f.val)));
+          const r = await http(
+            idFilter && filters.length === 1
+              ? `/api/${table}/${encodeURIComponent(idFilter.val)}`
+              : `/api/${table}?${qs.toString()}`,
+            { method: "DELETE" },
+          );
           resolve(r);
         },
       };
       return builder;
     },
-    upsert: async (rows: any | any[]) => {
-      const arr = Array.isArray(rows) ? rows : [rows];
-      const out: any[] = [];
-      for (const row of arr) {
-        const method = row.id ? "PATCH" : "POST";
-        const r = await http(`/api/${table}`, { method, body: JSON.stringify(row) });
-        if (r.error) return r;
-        out.push(r.data);
-      }
-      return { data: Array.isArray(rows) ? out : out[0], error: null };
+    upsert: async (rows: any | any[], options?: Record<string, unknown>) => {
+      return http(`/api/${table}/upsert`, {
+        method: "POST",
+        body: JSON.stringify({ payload: rows, options: options || {} }),
+      });
     },
   };
 }
@@ -166,6 +196,13 @@ function localFrom(table: string) {
 const localAuth = {
   onAuthStateChange: (_cb: any) => ({ data: { subscription: { unsubscribe() {} } } }),
   getSession: async () => ({ data: { session: null } }),
+  getUser: async () => {
+    const token = localToken();
+    if (!token) return { data: { user: null }, error: null };
+    // In local mode we don't strictly decode the JWT here, just return a dummy
+    // shape that keeps the UI and logging happy.
+    return { data: { user: { id: "local-user" } }, error: null };
+  },
   signInWithPassword: async () => ({ data: null, error: { message: "Use local login form" } }),
   signUp: async () => ({ data: null, error: { message: "Sign-up disabled in Local mode" } }),
   signOut: async () => ({ error: null }),
@@ -174,7 +211,10 @@ const localAuth = {
 const localClient: any = {
   from: localFrom,
   auth: localAuth,
-  rpc: async () => ({ data: null, error: { message: "RPC not available in Local mode" } }),
+  rpc: async (fn: string, args: Record<string, unknown> = {}) => http(`/api/rpc/${fn}`, {
+    method: "POST",
+    body: JSON.stringify(args),
+  }),
   channel: () => ({ on: () => ({ subscribe: () => ({}) }), subscribe: () => ({}) }),
   removeChannel: () => {},
   storage: { from: () => ({ upload: async () => ({ data: null, error: { message: "Storage not available in Local mode" } }) }) },

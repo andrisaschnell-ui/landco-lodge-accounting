@@ -15,12 +15,13 @@
 //  - Edit / delete is also available inline.
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const SHARED_SHEET = "_shared_mobile";
 const COLUMN_KEY = "receiver_contact";
@@ -102,7 +103,7 @@ export function ReceiverContactPicker({ cellNo, receiver, onChange, field }: Pro
       toast({ title: "Both fields required", description: "Enter a name AND a cell number.", variant: "destructive" });
       return;
     }
-    const { error } = await supabase.from("cash_dropdown_options").insert({
+    const { error } = await db.from("cash_dropdown_options").insert({
       sheet_type: SHARED_SHEET, column_key: COLUMN_KEY, value: pack(n, num),
     });
     if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
@@ -115,7 +116,7 @@ export function ReceiverContactPicker({ cellNo, receiver, onChange, field }: Pro
     const n = editName.trim();
     const num = editNumber.trim();
     if (!n || !num) return;
-    const { error } = await supabase.from("cash_dropdown_options")
+    const { error } = await db.from("cash_dropdown_options")
       .update({ value: pack(n, num) }).eq("id", id);
     if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
     setEditingId(null);
@@ -123,7 +124,7 @@ export function ReceiverContactPicker({ cellNo, receiver, onChange, field }: Pro
   }
 
   async function remove(id: string) {
-    const { error } = await supabase.from("cash_dropdown_options").delete().eq("id", id);
+    const { error } = await db.from("cash_dropdown_options").delete().eq("id", id);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
     load();
   }

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -15,6 +16,7 @@ function fmt(v: number) {
 }
 
 export default function Reports() {
+  const navigate = useNavigate();
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const m = parseInt(month);
@@ -23,7 +25,7 @@ export default function Reports() {
   const { data: income } = useQuery({
     queryKey: ["rpt-income", m, y],
     queryFn: async () => {
-      const { data } = await supabase.from("income_transactions").select("*, properties(name)").eq("month", m).eq("year", y).order("date");
+      const { data } = await db.from("income_transactions").select("*, properties(name)").eq("month", m).eq("year", y).order("date");
       return data ?? [];
     },
   });
@@ -31,7 +33,7 @@ export default function Reports() {
   const { data: expenses } = useQuery({
     queryKey: ["rpt-expenses", m, y],
     queryFn: async () => {
-      const { data } = await supabase.from("expense_transactions").select("*, properties(name), expense_categories(name)").eq("month", m).eq("year", y).order("date");
+      const { data } = await db.from("expense_transactions").select("*, properties(name), expense_categories(name)").eq("month", m).eq("year", y).order("date");
       return data ?? [];
     },
   });
@@ -39,7 +41,7 @@ export default function Reports() {
   const { data: salaryRuns } = useQuery({
     queryKey: ["rpt-salary", m, y],
     queryFn: async () => {
-      const { data } = await supabase.from("salary_runs").select("*").eq("month", m).eq("year", y);
+      const { data } = await db.from("salary_runs").select("*").eq("month", m).eq("year", y);
       return data ?? [];
     },
   });
@@ -47,7 +49,7 @@ export default function Reports() {
   const { data: salaryLines } = useQuery({
     queryKey: ["rpt-salary-lines", m, y],
     queryFn: async () => {
-      const { data } = await supabase.from("salary_lines").select("*, employees(name, house_assignment)").order("created_at");
+      const { data } = await db.from("salary_lines").select("*, employees(name, house_assignment)").order("created_at");
       return data ?? [];
     },
   });
@@ -55,7 +57,7 @@ export default function Reports() {
   const { data: properties } = useQuery({
     queryKey: ["rpt-props"],
     queryFn: async () => {
-      const { data } = await supabase.from("properties").select("*");
+      const { data } = await db.from("properties").select("*");
       return data ?? [];
     },
   });
@@ -63,7 +65,7 @@ export default function Reports() {
   const { data: shareholders } = useQuery({
     queryKey: ["rpt-shareholders"],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholders").select("*");
+      const { data } = await db.from("shareholders").select("*");
       return data ?? [];
     },
   });
@@ -71,7 +73,7 @@ export default function Reports() {
   const { data: balances } = useQuery({
     queryKey: ["rpt-balances", m, y],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholder_balances").select("*, shareholders(name), properties(name)").eq("month", m).eq("year", y);
+      const { data } = await db.from("shareholder_balances").select("*, shareholders(name), properties(name)").eq("month", m).eq("year", y);
       return data ?? [];
     },
   });
@@ -119,6 +121,7 @@ export default function Reports() {
           <TabsTrigger value="shareholder">Shareholder Statement</TabsTrigger>
           <TabsTrigger value="payroll">Payroll Report</TabsTrigger>
           <TabsTrigger value="property-pl">P&L per Property</TabsTrigger>
+          <TabsTrigger value="owner-monthly">Owner Monthly Sheets</TabsTrigger>
         </TabsList>
 
         {/* Monthly Ledger */}
@@ -292,6 +295,23 @@ export default function Reports() {
               ) : (
                 <p className="text-muted-foreground text-center py-8">No payroll data for {MONTHS[m]} {y}.</p>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="owner-monthly">
+          <Card>
+            <CardHeader>
+              <CardTitle>Owner Monthly Sheets</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+              <p className="text-muted-foreground text-center max-w-md">
+                Access the automated shareholder reports that mimic your Excel workbooks. 
+                Includes Summary, Income Breakdown, Analysis, and Detailed Expenses.
+              </p>
+              <Button onClick={() => navigate('/accounting/owner-monthly')}>
+                Open Detailed Owner Sheets
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

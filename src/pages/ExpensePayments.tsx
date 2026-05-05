@@ -43,9 +43,9 @@ export default function ExpensePayments() {
 
   const load = async () => {
     const [{ data: bks }, { data: cats }, { data: accs }] = await Promise.all([
-      supabase.from("bank_accounts").select("id, name, bank_name, pgc_account_code").order("name"),
-      supabase.from("expense_categories").select("id, name, pgc_account_code").order("name"),
-      supabase.from("accounts").select("id, code, name").order("code"),
+      db.from("bank_accounts").select("id, name, bank_name, pgc_account_code").order("name"),
+      db.from("expense_categories").select("id, name, pgc_account_code").order("name"),
+      db.from("accounts").select("id, code, name").order("code"),
     ]);
     setBanks(bks || []);
     setCategories(cats || []);
@@ -114,7 +114,7 @@ export default function ExpensePayments() {
         .select().single();
       if (jeErr) throw jeErr;
 
-      const { error: jlErr } = await supabase.from("journal_lines").insert([
+      const { error: jlErr } = await db.from("journal_lines").insert([
         { journal_entry_id: je.id, account_id: expAcc.id, debit: amt, credit: 0, memo: description },
         { journal_entry_id: je.id, account_id: creditAccount!.id, debit: 0, credit: amt, memo: `Paid via ${source === PETTY_CASH_VALUE ? "Petty Cash" : banks.find(b => b.id === source)?.name}` },
       ]);
@@ -122,14 +122,14 @@ export default function ExpensePayments() {
 
       // 2. Source-side transaction
       if (source === PETTY_CASH_VALUE) {
-        await supabase.from("petty_cash_transactions").insert({
+        await db.from("petty_cash_transactions").insert({
           date, description, credit: amt, debit: 0,
           month, year, reference: reference || null,
           allocation: cat?.name || null,
           journal_entry_id: je.id,
         });
       } else {
-        await supabase.from("bank_transactions").insert({
+        await db.from("bank_transactions").insert({
           date, description, credit: amt, debit: 0,
           month, year, reference: reference || null,
           bank_account_id: bankId,
@@ -138,7 +138,7 @@ export default function ExpensePayments() {
       }
 
       // 3. Expense transaction record
-      await supabase.from("expense_transactions").insert({
+      await db.from("expense_transactions").insert({
         date, description, amount_mzn: amt,
         category_id: categoryId, month, year,
         is_shared: true,

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -12,7 +12,7 @@ export default function Shareholders() {
   const { data: shareholders } = useQuery({
     queryKey: ["shareholders"],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholders").select("*, properties:property_code(name)");
+      const { data } = await db.from("shareholders").select("*, properties:property_code(name)");
       return data ?? [];
     },
   });
@@ -20,7 +20,7 @@ export default function Shareholders() {
   const { data: balances } = useQuery({
     queryKey: ["shareholder-balances-all"],
     queryFn: async () => {
-      const { data } = await supabase.from("shareholder_balances").select("*, shareholders(name), properties(name)").order("year", { ascending: false }).order("month", { ascending: false });
+      const { data } = await db.from("shareholder_balances").select("*, shareholders(name), properties(name)").order("year", { ascending: false }).order("month", { ascending: false });
       return data ?? [];
     },
   });

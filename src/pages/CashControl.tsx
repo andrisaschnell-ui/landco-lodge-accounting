@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, Smartphone, CreditCard, Banknote } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 
 interface Summary { count: number; sheets: number; lastMonth: string; opening: number; }
 
@@ -28,19 +28,20 @@ export default function CashControl() {
     (async () => {
       const out: Record<string, Summary> = {};
       for (const c of CARDS) {
-        const { data: sheets } = await supabase
+        const { data: sheets } = await db
           .from("cash_sheets")
           .select("id, month, year, opening_balance")
           .eq("sheet_type", c.key)
           .order("year", { ascending: false })
           .order("month", { ascending: false });
-        const { count } = await supabase
+        const { data: countRows } = await db
           .from("cash_transactions")
           .select("id", { count: "exact", head: true })
           .eq("sheet_type", c.key);
+        const count = Number(countRows?.[0]?.count ?? 0);
         const latest = sheets?.[0];
         out[c.key] = {
-          count: count ?? 0,
+          count,
           sheets: sheets?.length ?? 0,
           lastMonth: latest ? `${latest.month ? String(latest.month).padStart(2, "0") + "/" : ""}${latest.year}` : "—",
           opening: latest?.opening_balance ?? 0,

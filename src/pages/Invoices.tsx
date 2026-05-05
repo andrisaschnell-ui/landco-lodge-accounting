@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import {
   Table,
   TableBody,
@@ -16,6 +16,7 @@ import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
 import InvoiceForm from "@/components/InvoiceForm";
+import { supabase } from "@/integrations/supabase/client";
 
 function fmt(v: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2 }).format(Number(v ?? 0));

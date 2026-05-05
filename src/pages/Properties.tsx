@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ export default function Properties() {
   const { data: properties } = useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
-      const { data } = await supabase.from("properties").select("*").order("code");
+      const { data } = await db.from("properties").select("*").order("code");
       return data ?? [];
     },
   });
@@ -16,7 +16,7 @@ export default function Properties() {
   const { data: exchangeRates } = useQuery({
     queryKey: ["exchange-rates"],
     queryFn: async () => {
-      const { data } = await supabase.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false });
+      const { data } = await db.from("exchange_rates").select("*").order("year", { ascending: false }).order("month", { ascending: false });
       return data ?? [];
     },
   });

@@ -13,6 +13,7 @@ export interface ParsedExpenseLine {
   category: string;        // human-readable category name written to expense_categories.name
   is_shared: boolean;      // true → split 25% across 4 houses on the report side
   property_code: string | null;   // 'H1'..'H4' for house-specific columns; otherwise null
+  is_salary: boolean;
 }
 
 export interface ParsedExpensesResult {
@@ -142,6 +143,7 @@ export function parseExpenses(buffer: ArrayBuffer, month: number, year: number):
     const upperDesc = description.toUpperCase();
     if (!dateRaw && !supplier && /^(TOTAL|GRAND TOTAL|SUB TOTAL|SUBTOTAL)$/.test(upperDesc)) continue;
     const date = excelDateToISO(dateRaw);
+    const isSalaryRow = supplier.toUpperCase().includes('SALARIES');
 
     for (const col of cols) {
       if (col.skip) continue;
@@ -155,6 +157,7 @@ export function parseExpenses(buffer: ArrayBuffer, month: number, year: number):
         category: col.category,
         is_shared: col.is_shared,
         property_code: col.property_code,
+        is_salary: isSalaryRow || col.category === 'SALARIES & WAGES',
       };
       lines.push(line);
       perCategory[col.category] = (perCategory[col.category] ?? 0) + amt;

@@ -1,0 +1,692 @@
+[
+  {
+    "file": "src\\components\\AppSidebar.tsx",
+    "line": 81,
+    "code": "const { data } = await supabase.from(\"user_roles\").select(\"role\").eq(\"user_id\", uid);"
+  },
+  {
+    "file": "src\\components\\AttachmentManager.tsx",
+    "line": 32,
+    "code": "const { data: ins, error: insErr } = await supabase.from(\"document_attachments\").insert({"
+  },
+  {
+    "file": "src\\components\\AttachmentManager.tsx",
+    "line": 50,
+    "code": "await supabase.from(\"document_attachments\").delete().eq(\"id\", att.id);"
+  },
+  {
+    "file": "src\\components\\cash\\DropdownListEditor.tsx",
+    "line": 51,
+    "code": "const { error } = await supabase.from(\"cash_dropdown_options\").insert({ sheet_type: sheetType, column_key: columnKey, value: v });"
+  },
+  {
+    "file": "src\\components\\cash\\DropdownListEditor.tsx",
+    "line": 60,
+    "code": "const { error } = await supabase.from(\"cash_dropdown_options\").update({ value: v }).eq(\"id\", id);"
+  },
+  {
+    "file": "src\\components\\cash\\DropdownListEditor.tsx",
+    "line": 67,
+    "code": "const { error } = await supabase.from(\"cash_dropdown_options\").delete().eq(\"id\", id);"
+  },
+  {
+    "file": "src\\components\\cash\\ReceiverContactPicker.tsx",
+    "line": 105,
+    "code": "const { error } = await supabase.from(\"cash_dropdown_options\").insert({"
+  },
+  {
+    "file": "src\\components\\cash\\ReceiverContactPicker.tsx",
+    "line": 118,
+    "code": "const { error } = await supabase.from(\"cash_dropdown_options\")"
+  },
+  {
+    "file": "src\\components\\cash\\ReceiverContactPicker.tsx",
+    "line": 126,
+    "code": "const { error } = await supabase.from(\"cash_dropdown_options\").delete().eq(\"id\", id);"
+  },
+  {
+    "file": "src\\lib\\cashControlImport.ts",
+    "line": 9,
+    "code": "await supabase.from(\"cash_dropdown_options\").upsert(rows, { onConflict: \"sheet_type,column_key,value\", ignoreDuplicates: true });"
+  },
+  {
+    "file": "src\\lib\\cashControlImport.ts",
+    "line": 16,
+    "code": "await supabase.from(\"cash_allocation_columns\").upsert(rows, { onConflict: \"sheet_type,column_name\", ignoreDuplicates: true });"
+  },
+  {
+    "file": "src\\lib\\cashControlImport.ts",
+    "line": 29,
+    "code": "await supabase.from(\"cash_transactions\").delete().in(\"sheet_id\", ids);"
+  },
+  {
+    "file": "src\\lib\\cashControlImport.ts",
+    "line": 30,
+    "code": "await supabase.from(\"cash_sheets\").delete().in(\"id\", ids);"
+  },
+  {
+    "file": "src\\lib\\cashControlImport.ts",
+    "line": 72,
+    "code": "const { error: txErr } = await supabase.from(\"cash_transactions\").insert(txRows);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 15,
+    "code": "const { data } = await supabase.from(\"employees\").select(\"id, name\");"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 22,
+    "code": "const { data } = await supabase.from(\"properties\").select(\"id, code\");"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 32,
+    "code": "const { data } = await supabase.from(\"expense_categories\").select(\"id, name\");"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 39,
+    "code": "const { data } = await supabase.from(\"bank_accounts\").select(\"id, name\");"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 59,
+    "code": "const { error: linesErr } = await supabase.from(\"salary_lines\").delete().eq(\"salary_run_id\", runId);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 61,
+    "code": "const { error: runErr } = await supabase.from(\"salary_runs\").delete().eq(\"id\", runId);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 131,
+    "code": "const { error } = await supabase.from(\"salary_lines\").insert(salaryLines);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 141,
+    "code": "await supabase.from(\"salary_runs\").update(totals).eq(\"id\", run.id);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 160,
+    "code": "const { error } = await supabase.from(\"bim_salary_transfers\").insert(transfers);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 183,
+    "code": "const { error } = await supabase.from(\"income_transactions\").insert(incRows);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 200,
+    "code": "const { error } = await supabase.from(\"expense_transactions\").insert(expRows);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 243,
+    "code": "const { error } = await supabase.from(\"bank_transactions\").insert(rows);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 251,
+    "code": "await supabase.from(\"bank_opening_balances\").upsert("
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 302,
+    "code": "const { error } = await supabase.from(\"petty_cash_transactions\").insert(rows);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 341,
+    "code": "await supabase.from(\"invoices\").delete().in(\"id\", priorInvIds);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 344,
+    "code": "await supabase.from(\"journal_lines\").delete().in(\"journal_entry_id\", priorJeIds);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 345,
+    "code": "await supabase.from(\"journal_entries\").delete().in(\"id\", priorJeIds);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 389,
+    "code": "await supabase.from(\"journal_lines\").insert(jLines);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 393,
+    "code": "await supabase.from(\"invoices\").insert({"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 423,
+    "code": "await supabase.from(\"import_log\").insert({"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 459,
+    "code": "const { data } = await supabase.from(\"accounts\").select(\"id, code\").in(\"code\", unique);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 468,
+    "code": "const { data: existing } = await supabase.from(\"suppliers\").select(\"id, name\");"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 508,
+    "code": "await supabase.from(\"expense_transactions\").delete().eq(\"month\", result.month).eq(\"year\", result.year);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 510,
+    "code": "await supabase.from(\"supplier_invoices\").delete().in(\"journal_entry_id\", priorJeIds);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 511,
+    "code": "await supabase.from(\"journal_lines\").delete().in(\"journal_entry_id\", priorJeIds);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 512,
+    "code": "await supabase.from(\"journal_entries\").delete().in(\"id\", priorJeIds);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 598,
+    "code": "const { error: jlErr } = await supabase.from(\"journal_lines\").insert(jLines);"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 603,
+    "code": "await supabase.from(\"supplier_invoices\").insert({"
+  },
+  {
+    "file": "src\\lib\\importService.ts",
+    "line": 626,
+    "code": "const { error: expErr } = await supabase.from(\"expense_transactions\").insert(expRows);"
+  },
+  {
+    "file": "src\\pages\\AccountingPeriods.tsx",
+    "line": 24,
+    "code": "const { data } = await supabase.from(\"accounting_periods\").select(\"*\").eq(\"year\", year).order(\"month\");"
+  },
+  {
+    "file": "src\\pages\\AccountLedger.tsx",
+    "line": 21,
+    "code": "const { data } = await supabase.from(\"accounts\").select(\"id, code, name, normal_side\").order(\"code\");"
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 32,
+    "code": "const { data } = await supabase.from(\"expense_categories\").select(\"*\").order(\"name\");"
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 40,
+    "code": "const { data } = await supabase.from(\"accounts\").select(\"code, name\").order(\"code\");"
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 48,
+    "code": "const { error } = await supabase.from(\"expense_categories\").update(payload).eq(\"id\", editingCat.id);"
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 51,
+    "code": "const { error } = await supabase.from(\"expense_categories\").insert([payload]);"
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 67,
+    "code": "const { error } = await supabase.from(\"expense_categories\").update({ pgc_account_code: null }).eq(\"id\", id); // Unmap if needed, but it's simpler to just map instead of full delete for now if relations exist. Wait, let's delete it."
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 69,
+    "code": "const { error: delErr } = await supabase.from(\"expense_categories\").update({}).eq(\"id\", \"0\"); // mock"
+  },
+  {
+    "file": "src\\pages\\AccountMapping.tsx",
+    "line": 100,
+    "code": "const { error } = await supabase.from(\"expense_categories\").update({ pgc_account_code: code }).eq(\"id\", categoryId);"
+  },
+  {
+    "file": "src\\pages\\Approvals.tsx",
+    "line": 23,
+    "code": "supabase.from(\"expense_transactions\").select(\"id,date,description,amount_mzn,property_id,category_id\").eq(\"approval_status\", \"pending\").order(\"date\"),"
+  },
+  {
+    "file": "src\\pages\\Approvals.tsx",
+    "line": 24,
+    "code": "supabase.from(\"company_settings\").select(\"approval_threshold_mzn\").maybeSingle(),"
+  },
+  {
+    "file": "src\\pages\\AuditLog.tsx",
+    "line": 27,
+    "code": "let q = supabase.from(\"audit_log\").select(\"*\").order(\"occurred_at\", { ascending: false }).limit(500);"
+  },
+  {
+    "file": "src\\pages\\BankReconciliation.tsx",
+    "line": 34,
+    "code": "supabase.from(\"bank_accounts\").select(\"id,name,bank_name\").then(({ data }) => {"
+  },
+  {
+    "file": "src\\pages\\BankReconciliation.tsx",
+    "line": 90,
+    "code": "await supabase.from(\"bank_transactions\").update({"
+  },
+  {
+    "file": "src\\pages\\Budgets.tsx",
+    "line": 48,
+    "code": "const { data } = await supabase.from(\"budgets\").select(\"account_id, month, amount\").eq(\"year\", year).is(\"property_id\", null);"
+  },
+  {
+    "file": "src\\pages\\Budgets.tsx",
+    "line": 70,
+    "code": "const { error } = await supabase.from(\"budgets\").upsert(rows, { onConflict: \"account_id,year,month,property_id\" });"
+  },
+  {
+    "file": "src\\pages\\Budgets.tsx",
+    "line": 159,
+    "code": "supabase.from(\"budgets\").select(\"account_id, amount, month\").eq(\"year\", year).gte(\"month\", fromMonth).lte(\"month\", toMonth).is(\"property_id\", null),"
+  },
+  {
+    "file": "src\\pages\\CashControlDisplay.tsx",
+    "line": 204,
+    "code": "const { error } = await supabase.from(\"cash_transactions\").update(patch).eq(\"id\", id);"
+  },
+  {
+    "file": "src\\pages\\CashControlDisplay.tsx",
+    "line": 215,
+    "code": "const { error } = await supabase.from(\"cash_sheets\").update({ opening_balance: val }).eq(\"id\", selected.id);"
+  },
+  {
+    "file": "src\\pages\\CashControlDisplay.tsx",
+    "line": 224,
+    "code": "const { error } = await supabase.from(\"cash_allocation_columns\").insert({ sheet_type: sheetType, column_name: v, sort_order: allocCols.length });"
+  },
+  {
+    "file": "src\\pages\\CashControlDisplay.tsx",
+    "line": 233,
+    "code": "const { data, error } = await supabase.from(\"cash_transactions\").insert({"
+  },
+  {
+    "file": "src\\pages\\CashControlReports.tsx",
+    "line": 25,
+    "code": "const { data: f } = await supabase.from(\"cash_transactions\").select(\"funder\").not(\"funder\", \"is\", null);"
+  },
+  {
+    "file": "src\\pages\\CashControlReports.tsx",
+    "line": 26,
+    "code": "const { data: r } = await supabase.from(\"cash_transactions\").select(\"receiver\").not(\"receiver\", \"is\", null);"
+  },
+  {
+    "file": "src\\pages\\CashControlReports.tsx",
+    "line": 36,
+    "code": "const { data } = await supabase.from(\"cash_transactions\").select(\"*\").order(\"tx_date\", { ascending: true });"
+  },
+  {
+    "file": "src\\pages\\ChartOfAccounts.tsx",
+    "line": 53,
+    "code": "const { error } = await supabase.from(\"accounts\").insert({"
+  },
+  {
+    "file": "src\\pages\\Dashboard.tsx",
+    "line": 17,
+    "code": "const { data } = await supabase.from(\"income_transactions\").select(\"accommodation_amount_mzn, property_id, month\");"
+  },
+  {
+    "file": "src\\pages\\Dashboard.tsx",
+    "line": 25,
+    "code": "const { data } = await supabase.from(\"expense_transactions\").select(\"amount_mzn, is_shared, month\");"
+  },
+  {
+    "file": "src\\pages\\Dashboard.tsx",
+    "line": 33,
+    "code": "const { data } = await supabase.from(\"exchange_rates\").select(\"*\").order(\"year\", { ascending: false }).order(\"month\", { ascending: false }).limit(1);"
+  },
+  {
+    "file": "src\\pages\\Dashboard.tsx",
+    "line": 41,
+    "code": "const { data } = await supabase.from(\"properties\").select(\"*\");"
+  },
+  {
+    "file": "src\\pages\\Dashboard.tsx",
+    "line": 49,
+    "code": "const { data } = await supabase.from(\"shareholder_balances\").select(\"*, shareholders(name), properties(name)\");"
+  },
+  {
+    "file": "src\\pages\\Dashboard.tsx",
+    "line": 57,
+    "code": "const { data } = await supabase.from(\"import_log\").select(\"*\").order(\"created_at\", { ascending: false }).limit(5);"
+  },
+  {
+    "file": "src\\pages\\Employees.tsx",
+    "line": 15,
+    "code": "const { data } = await supabase.from(\"employees\").select(\"*\").order(\"house_assignment\").order(\"name\");"
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 46,
+    "code": "supabase.from(\"bank_accounts\").select(\"id, name, bank_name, pgc_account_code\").order(\"name\"),"
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 47,
+    "code": "supabase.from(\"expense_categories\").select(\"id, name, pgc_account_code\").order(\"name\"),"
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 48,
+    "code": "supabase.from(\"accounts\").select(\"id, code, name\").order(\"code\"),"
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 117,
+    "code": "const { error: jlErr } = await supabase.from(\"journal_lines\").insert(["
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 125,
+    "code": "await supabase.from(\"petty_cash_transactions\").insert({"
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 132,
+    "code": "await supabase.from(\"bank_transactions\").insert({"
+  },
+  {
+    "file": "src\\pages\\ExpensePayments.tsx",
+    "line": 141,
+    "code": "await supabase.from(\"expense_transactions\").insert({"
+  },
+  {
+    "file": "src\\pages\\FinancialStatements.tsx",
+    "line": 35,
+    "code": "supabase.from(\"properties\").select(\"id, code, name\").order(\"code\"),"
+  },
+  {
+    "file": "src\\pages\\FixedAssets.tsx",
+    "line": 42,
+    "code": "supabase.from(\"fixed_assets\").select(\"*\").order(\"asset_code\"),"
+  },
+  {
+    "file": "src\\pages\\FixedAssets.tsx",
+    "line": 43,
+    "code": "supabase.from(\"properties\").select(\"id,name\"),"
+  },
+  {
+    "file": "src\\pages\\FixedAssets.tsx",
+    "line": 53,
+    "code": "const { data, error } = await supabase.from(\"fixed_assets\").insert(payload).select().single();"
+  },
+  {
+    "file": "src\\pages\\FxRevaluation.tsx",
+    "line": 30,
+    "code": "const { data } = await supabase.from(\"fx_revaluations\").select(\"*\").order(\"year\", { ascending: false }).order(\"month\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\FxRevaluation.tsx",
+    "line": 36,
+    "code": "const { data } = await supabase.from(\"exchange_rates\").select(\"*\").eq(\"year\", year).eq(\"month\", month).maybeSingle();"
+  },
+  {
+    "file": "src\\pages\\FxRevaluation.tsx",
+    "line": 48,
+    "code": "const { data: je, error } = await supabase.from(\"journal_entries\").insert({"
+  },
+  {
+    "file": "src\\pages\\FxRevaluation.tsx",
+    "line": 63,
+    "code": "const { error: lineErr } = await supabase.from(\"journal_lines\").insert(lines);"
+  },
+  {
+    "file": "src\\pages\\FxRevaluation.tsx",
+    "line": 66,
+    "code": "await supabase.from(\"fx_revaluations\").upsert({"
+  },
+  {
+    "file": "src\\pages\\Inventory.tsx",
+    "line": 45,
+    "code": "supabase.from(\"inventory_items\").select(\"*\").order(\"sku\"),"
+  },
+  {
+    "file": "src\\pages\\Inventory.tsx",
+    "line": 46,
+    "code": "supabase.from(\"inventory_movements\").select(\"*\").order(\"created_at\", { ascending: false }).limit(200),"
+  },
+  {
+    "file": "src\\pages\\Inventory.tsx",
+    "line": 54,
+    "code": "const { error } = await supabase.from(\"inventory_items\").insert(itemForm as any);"
+  },
+  {
+    "file": "src\\pages\\Inventory.tsx",
+    "line": 68,
+    "code": "const { error } = await supabase.from(\"inventory_movements\").insert(payload);"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 43,
+    "code": "supabase.from(\"accounts\").select(\"id, code, name\").order(\"code\"),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 44,
+    "code": "supabase.from(\"journal_entries\").select(\"*\").order(\"entry_date\", { ascending: false }).limit(500),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 45,
+    "code": "supabase.from(\"journal_lines\").select(\"*\"),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 59,
+    "code": "supabase.from(\"income_transactions\").select(\"id\", { count: \"exact\", head: true }).is(\"journal_entry_id\", null),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 60,
+    "code": "supabase.from(\"expense_transactions\").select(\"id\", { count: \"exact\", head: true }).is(\"journal_entry_id\", null),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 61,
+    "code": "supabase.from(\"bank_transactions\").select(\"id\", { count: \"exact\", head: true }).is(\"journal_entry_id\", null),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 62,
+    "code": "supabase.from(\"petty_cash_transactions\").select(\"id\", { count: \"exact\", head: true }).is(\"journal_entry_id\", null),"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 94,
+    "code": "const { data: banks } = await supabase.from(\"bank_accounts\").select(\"id, name, pgc_account_code\");"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 123,
+    "code": "await supabase.from(\"journal_lines\").insert(["
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 127,
+    "code": "await supabase.from(\"income_transactions\").update({ journal_entry_id: je.id }).eq(\"id\", it.id);"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 152,
+    "code": "await supabase.from(\"journal_lines\").insert(["
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 156,
+    "code": "await supabase.from(\"expense_transactions\").update({ journal_entry_id: je.id }).eq(\"id\", ex.id);"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 182,
+    "code": "await supabase.from(\"journal_lines\").insert(["
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 186,
+    "code": "await supabase.from(\"bank_transactions\").update({ journal_entry_id: je.id }).eq(\"id\", b.id);"
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 211,
+    "code": "await supabase.from(\"journal_lines\").insert(["
+  },
+  {
+    "file": "src\\pages\\JournalEntries.tsx",
+    "line": 215,
+    "code": "await supabase.from(\"petty_cash_transactions\").update({ journal_entry_id: je.id }).eq(\"id\", p.id);"
+  },
+  {
+    "file": "src\\pages\\Payroll - original.tsx",
+    "line": 17,
+    "code": "const { data } = await supabase.from(\"salary_runs\").select(\"*\").order(\"year\", { ascending: false }).order(\"month\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\Payroll - original.tsx",
+    "line": 25,
+    "code": "const { data } = await supabase.from(\"salary_lines\").select(\"*, employees(name, house_assignment)\").order(\"created_at\");"
+  },
+  {
+    "file": "src\\pages\\Payroll.tsx",
+    "line": 134,
+    "code": "const { error: linesErr } = await supabase.from(\"salary_lines\").delete().eq(\"salary_run_id\", run.id);"
+  },
+  {
+    "file": "src\\pages\\Payroll.tsx",
+    "line": 136,
+    "code": "const { error: runErr } = await supabase.from(\"salary_runs\").delete().eq(\"id\", run.id);"
+  },
+  {
+    "file": "src\\pages\\Payroll.tsx",
+    "line": 213,
+    "code": "const { error: insErr } = await supabase.from(\"salary_lines\").insert(cloned);"
+  },
+  {
+    "file": "src\\pages\\Payroll.tsx",
+    "line": 255,
+    "code": "const { error: delErr } = await supabase.from(\"salary_lines\").delete().eq(\"salary_run_id\", run.id);"
+  },
+  {
+    "file": "src\\pages\\Payroll.tsx",
+    "line": 291,
+    "code": "const { error: insErr } = await supabase.from(\"salary_lines\").insert(toInsert);"
+  },
+  {
+    "file": "src\\pages\\Properties.tsx",
+    "line": 11,
+    "code": "const { data } = await supabase.from(\"properties\").select(\"*\").order(\"code\");"
+  },
+  {
+    "file": "src\\pages\\Properties.tsx",
+    "line": 19,
+    "code": "const { data } = await supabase.from(\"exchange_rates\").select(\"*\").order(\"year\", { ascending: false }).order(\"month\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 26,
+    "code": "const { data } = await supabase.from(\"income_transactions\").select(\"*, properties(name)\").eq(\"month\", m).eq(\"year\", y).order(\"date\");"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 34,
+    "code": "const { data } = await supabase.from(\"expense_transactions\").select(\"*, properties(name), expense_categories(name)\").eq(\"month\", m).eq(\"year\", y).order(\"date\");"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 42,
+    "code": "const { data } = await supabase.from(\"salary_runs\").select(\"*\").eq(\"month\", m).eq(\"year\", y);"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 50,
+    "code": "const { data } = await supabase.from(\"salary_lines\").select(\"*, employees(name, house_assignment)\").order(\"created_at\");"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 58,
+    "code": "const { data } = await supabase.from(\"properties\").select(\"*\");"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 66,
+    "code": "const { data } = await supabase.from(\"shareholders\").select(\"*\");"
+  },
+  {
+    "file": "src\\pages\\Reports.tsx",
+    "line": 74,
+    "code": "const { data } = await supabase.from(\"shareholder_balances\").select(\"*, shareholders(name), properties(name)\").eq(\"month\", m).eq(\"year\", y);"
+  },
+  {
+    "file": "src\\pages\\Settings.tsx",
+    "line": 26,
+    "code": "const { data } = await supabase.from(\"user_roles\").select(\"role\").eq(\"user_id\", uid);"
+  },
+  {
+    "file": "src\\pages\\ShareholderDetail.tsx",
+    "line": 21,
+    "code": "const { data } = await supabase.from(\"shareholders\").select(\"*\").eq(\"id\", id!).single();"
+  },
+  {
+    "file": "src\\pages\\ShareholderDetail.tsx",
+    "line": 30,
+    "code": "const { data } = await supabase.from(\"shareholder_balances\").select(\"*, properties(name)\").eq(\"shareholder_id\", id!).order(\"year\").order(\"month\");"
+  },
+  {
+    "file": "src\\pages\\ShareholderDetail.tsx",
+    "line": 39,
+    "code": "const { data } = await supabase.from(\"expense_transactions\").select(\"*, expense_categories(name)\").eq(\"shareholder_id\", id!).order(\"date\", { ascending: false }).limit(50);"
+  },
+  {
+    "file": "src\\pages\\Shareholders.tsx",
+    "line": 15,
+    "code": "const { data } = await supabase.from(\"shareholders\").select(\"*, properties:property_code(name)\");"
+  },
+  {
+    "file": "src\\pages\\Shareholders.tsx",
+    "line": 23,
+    "code": "const { data } = await supabase.from(\"shareholder_balances\").select(\"*, shareholders(name), properties(name)\").order(\"year\", { ascending: false }).order(\"month\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\SuspenseReview.tsx",
+    "line": 27,
+    "code": "const { data } = await supabase.from(\"accounts\").select(\"id, code, name\").eq(\"code\", \"262\").maybeSingle();"
+  },
+  {
+    "file": "src\\pages\\Transactions.tsx",
+    "line": 37,
+    "code": "const { data } = await supabase.from(\"expense_transactions\").select(\"*, properties(name), expense_categories(name), shareholders(name)\").order(\"date\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\Transactions.tsx",
+    "line": 45,
+    "code": "const { data } = await supabase.from(\"bank_transactions\").select(\"*, bank_accounts(name, currency)\").order(\"date\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\Transactions.tsx",
+    "line": 53,
+    "code": "const { data } = await supabase.from(\"petty_cash_transactions\").select(\"*\").order(\"date\", { ascending: false });"
+  },
+  {
+    "file": "src\\pages\\TrialBalance.tsx",
+    "line": 30,
+    "code": "supabase.from(\"accounts\").select(\"id, code, name, account_type, pgc_class, normal_side\").order(\"code\"),"
+  }
+]

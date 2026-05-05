@@ -17,7 +17,7 @@ import pkg from 'pg';
 import {
   postIncome, postExpense, postBank, postPettyCash, postPayroll,
   linkSourceToEntry,
-} from '../api/lib/autoPost.js';
+} from '../lib/autoPost.js';
 
 const { Pool } = pkg;
 

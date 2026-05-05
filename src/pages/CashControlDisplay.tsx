@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +14,7 @@ import { ZoomControl } from "@/components/cash/ZoomControl";
 import { FloatingSaveButton } from "@/components/cash/FloatingSaveButton";
 import { exportCashSheetAsXlsx } from "@/lib/cashControlExport";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type CashType = "petty_cash" | "cash_landco" | "emola" | "emola_two" | "mpesa" | "mpesa_two" | "bim" | "bci";
 
@@ -201,7 +202,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
     if (ids.length === 0) { toast({ title: "Nothing to save" }); return; }
     for (const id of ids) {
       const patch = dirty[id];
-      const { error } = await supabase.from("cash_transactions").update(patch).eq("id", id);
+      const { error } = await db.from("cash_transactions").update(patch).eq("id", id);
       if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
     }
     toast({ title: "Saved", description: `${ids.length} rows updated` });
@@ -212,7 +213,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
     if (!selected || !isJanuary) return;
     const val = Number(janOpeningInput);
     if (Number.isNaN(val)) { toast({ title: "Invalid number", variant: "destructive" }); return; }
-    const { error } = await supabase.from("cash_sheets").update({ opening_balance: val }).eq("id", selected.id);
+    const { error } = await db.from("cash_sheets").update({ opening_balance: val }).eq("id", selected.id);
     if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Opening saved" });
     await loadPeriods();
@@ -221,7 +222,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   const addAllocCol = async () => {
     const v = newAllocCol.trim();
     if (!v) return;
-    const { error } = await supabase.from("cash_allocation_columns").insert({ sheet_type: sheetType, column_name: v, sort_order: allocCols.length });
+    const { error } = await db.from("cash_allocation_columns").insert({ sheet_type: sheetType, column_name: v, sort_order: allocCols.length });
     if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
     setNewAllocCol("");
     loadAllocCols();
@@ -230,7 +231,7 @@ function SheetDisplay({ sheetType }: { sheetType: CashType }) {
   const addTransaction = async () => {
     if (!selected) { toast({ title: "Pick a period first" }); return; }
     const nextRowNo = (txs.reduce((m, t) => Math.max(m, t.row_no ?? 0), 0)) + 1;
-    const { data, error } = await supabase.from("cash_transactions").insert({
+    const { data, error } = await db.from("cash_transactions").insert({
       sheet_id: selected.id,
       sheet_type: sheetType,
       row_no: nextRowNo,

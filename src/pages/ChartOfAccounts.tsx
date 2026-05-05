@@ -50,7 +50,7 @@ export default function ChartOfAccounts() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("accounts").insert({
+    const { error } = await db.from("accounts").insert({
       code: form.code.trim(),
       name: form.name.trim(),
       account_type: form.account_type,

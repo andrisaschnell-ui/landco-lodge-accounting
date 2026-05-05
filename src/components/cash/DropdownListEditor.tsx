@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, Pencil, Trash2, Check, X, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   sheetType: string;
@@ -48,7 +49,7 @@ export function DropdownListEditor({ sheetType, columnKey, label, value, onPick,
   const add = async () => {
     const v = newValue.trim();
     if (!v) return;
-    const { error } = await supabase.from("cash_dropdown_options").insert({ sheet_type: sheetType, column_key: columnKey, value: v });
+    const { error } = await db.from("cash_dropdown_options").insert({ sheet_type: sheetType, column_key: columnKey, value: v });
     if (error) { toast({ title: "Add failed", description: error.message, variant: "destructive" }); return; }
     setNewValue("");
     load();
@@ -57,14 +58,14 @@ export function DropdownListEditor({ sheetType, columnKey, label, value, onPick,
   const save = async (id: string) => {
     const v = editingValue.trim();
     if (!v) return;
-    const { error } = await supabase.from("cash_dropdown_options").update({ value: v }).eq("id", id);
+    const { error } = await db.from("cash_dropdown_options").update({ value: v }).eq("id", id);
     if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
     setEditingId(null);
     load();
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from("cash_dropdown_options").delete().eq("id", id);
+    const { error } = await db.from("cash_dropdown_options").delete().eq("id", id);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
     load();
   };

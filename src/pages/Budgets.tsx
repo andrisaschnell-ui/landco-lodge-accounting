@@ -45,7 +45,7 @@ function BudgetEntry() {
       const filtered = accts.filter(a => a.account_type === "revenue" || a.account_type === "expense");
       setAccounts(filtered);
 
-      const { data } = await supabase.from("budgets").select("account_id, month, amount").eq("year", year).is("property_id", null);
+      const { data } = await db.from("budgets").select("account_id, month, amount").eq("year", year).is("property_id", null);
       const map: Record<string, number> = {};
       (data || []).forEach((b: any) => { map[`${b.account_id}-${b.month}`] = Number(b.amount); });
       setBudgets(map);
@@ -67,7 +67,7 @@ function BudgetEntry() {
       const [account_id, m] = k.split("-");
       return { account_id, month: Number(m), year, amount: budgets[k] || 0 };
     });
-    const { error } = await supabase.from("budgets").upsert(rows, { onConflict: "account_id,year,month,property_id" });
+    const { error } = await db.from("budgets").upsert(rows, { onConflict: "account_id,year,month,property_id" });
     if (error) { toast.error(error.message); }
     else { toast.success(`Saved ${rows.length} budget cells.`); setDirty(new Set()); }
     setSaving(false);
@@ -156,7 +156,7 @@ function BudgetVsActual() {
       const to = lastDay(year, toMonth);
 
       const [{ data: budRows }, agg] = await Promise.all([
-        supabase.from("budgets").select("account_id, amount, month").eq("year", year).gte("month", fromMonth).lte("month", toMonth).is("property_id", null),
+        db.from("budgets").select("account_id, amount, month").eq("year", year).gte("month", fromMonth).lte("month", toMonth).is("property_id", null),
         loadAggregates({ from, to }),
       ]);
 

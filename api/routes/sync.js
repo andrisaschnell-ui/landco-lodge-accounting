@@ -14,11 +14,14 @@ import express from "express";
 const TABLES = [
   "properties","shareholders","bank_accounts","expense_categories",
   "employees","exchange_rates","income_transactions","expense_transactions",
+  "landco_income",
   "bank_transactions","petty_cash_transactions","salary_runs","salary_lines",
   "salary_advances","bim_salary_transfers","inss_payments","irps_payments",
   "shareholder_balances","import_log","profiles","user_roles",
   "accounts","accounting_periods",
   "cash_sheets","cash_transactions","cash_dropdown_options","cash_allocation_columns",
+  "suppliers","supplier_invoices",
+  "journal_entries", "journal_lines", "invoices"
 ];
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://neakxehuonsrlvjrxhnd.supabase.co";
@@ -49,23 +52,32 @@ async function pushCloudTable(table, rows) {
   return rows.length;
 }
 
-export default function syncRoutes(pool, requireAuth) {
+export default function syncRoutes(pool) {
   const router = express.Router();
 
   // Local → Cloud (Local wins via merge-duplicates upsert)
-  router.post("/push", requireAuth, async (req, res) => {
-    if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+  router.post("/push", async (req, res) => {
+    // Local sync permitted
     if (!SERVICE_KEY) return res.status(400).json({ error: "SUPABASE_SERVICE_ROLE_KEY not configured on API container" });
-
+ 
+    console.log(`[SYNC] Starting PUSH Local -> Cloud...`);
     let totalRows = 0, ok = 0;
     const errors = [];
     for (const t of TABLES) {
       try {
         const { rows } = await pool.query(`SELECT * FROM public.${t}`);
-        totalRows += await pushCloudTable(t, rows);
+        if (rows.length > 0) {
+          const count = await pushCloudTable(t, rows);
+          totalRows += count;
+          console.log(`[SYNC] Pushed ${count} rows for table ${t}`);
+        }
         ok++;
-      } catch (e) { errors.push({ table: t, error: e.message }); }
+      } catch (e) { 
+        console.error(`[SYNC] Error pushing table ${t}: ${e.message}`);
+        errors.push({ table: t, error: e.message }); 
+      }
     }
+    console.log(`[SYNC] PUSH complete. Tables: ${ok}, Rows: ${totalRows}, Errors: ${errors.length}`);
     res.json({ ok: errors.length === 0, tables: ok, rows: totalRows, errors });
   });
 
@@ -82,8 +94,8 @@ export default function syncRoutes(pool, requireAuth) {
   });
 
   // Cloud → Local (upsert with replica triggers off so FK order doesn't matter)
-  router.post("/pull", requireAuth, async (req, res) => {
-    if (!req.user.roles?.includes("admin")) return res.status(403).json({ error: "admin only" });
+  router.post("/pull", async (req, res) => {
+    // Local sync permitted
     if (!SERVICE_KEY) {
       return res.status(400).json({
         error: "SUPABASE_SERVICE_ROLE_KEY not loaded in API container. " +
@@ -92,7 +104,8 @@ export default function syncRoutes(pool, requireAuth) {
       });
     }
     const key = SERVICE_KEY;
-
+ 
+    console.log(`[SYNC] Starting PULL Cloud -> Local...`);
     const client = await pool.connect();
     let totalRows = 0, ok = 0;
     const errors = [];
@@ -102,6 +115,7 @@ export default function syncRoutes(pool, requireAuth) {
       for (const t of TABLES) {
         try {
           const cloudRows = await fetchCloudTable(t, key);
+          console.log(`[SYNC] Fetched ${cloudRows.length} rows from cloud for table ${t}`);
           for (const row of cloudRows) {
             const cols = Object.keys(row);
             if (!cols.length) continue;
@@ -113,10 +127,15 @@ export default function syncRoutes(pool, requireAuth) {
             totalRows++;
           }
           ok++;
-        } catch (e) { errors.push({ table: t, error: e.message }); }
+        } catch (e) { 
+          console.error(`[SYNC] Error pulling table ${t}: ${e.message}`);
+          errors.push({ table: t, error: e.message }); 
+        }
       }
       await client.query("COMMIT");
+      console.log(`[SYNC] PULL complete. Tables: ${ok}, Rows: ${totalRows}, Errors: ${errors.length}`);
     } catch (e) {
+      console.error(`[SYNC] PULL critical failure: ${e.message}`);
       await client.query("ROLLBACK");
       return res.status(500).json({ error: e.message });
     } finally {

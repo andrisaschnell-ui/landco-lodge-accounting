@@ -24,7 +24,7 @@ export default function SuspenseReview() {
   const { data: suspenseAccount } = useQuery({
     queryKey: ["account-262"],
     queryFn: async () => {
-      const { data } = await supabase.from("accounts").select("id, code, name").eq("code", "262").maybeSingle();
+      const { data } = await db.from("accounts").select("id, code, name").eq("code", "262").maybeSingle();
       return data;
     },
   });

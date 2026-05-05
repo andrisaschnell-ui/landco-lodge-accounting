@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Check, X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const fmt = (n: number) => new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 2 }).format(n || 0);
 
@@ -17,11 +18,12 @@ export default function Approvals() {
   const [items, setItems] = useState<PendingExp[]>([]);
   const [threshold, setThreshold] = useState<number>(50000);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   async function load() {
     const [{ data: pend }, { data: cs }] = await Promise.all([
-      supabase.from("expense_transactions").select("id,date,description,amount_mzn,property_id,category_id").eq("approval_status", "pending").order("date"),
-      supabase.from("company_settings").select("approval_threshold_mzn").maybeSingle(),
+      db.from("expense_transactions").select("id,date,description,amount_mzn,property_id,category_id").eq("approval_status", "pending").order("date"),
+      db.from("company_settings").select("approval_threshold_mzn").maybeSingle(),
     ]);
     setItems((pend as PendingExp[]) || []);
     setThreshold(Number((cs as any)?.approval_threshold_mzn ?? 50000));
@@ -29,13 +31,21 @@ export default function Approvals() {
   useEffect(() => { load(); }, []);
 
   async function approve(id: string) {
-    const { error } = await supabase.rpc("fn_approve_expense", { _id: id });
+    const { error } = await db.from("expense_transactions").update({
+      approval_status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: (user as { id?: string } | null)?.id ?? null,
+    }).eq("id", id);
     if (error) return toast({ title: "Approve failed", description: error.message, variant: "destructive" });
     toast({ title: "Approved & posted" });
     load();
   }
   async function reject(id: string) {
-    const { error } = await supabase.rpc("fn_reject_expense", { _id: id, _reason: "" });
+    const { error } = await db.from("expense_transactions").update({
+      approval_status: "rejected",
+      approved_at: null,
+      approved_by: null,
+    }).eq("id", id);
     if (error) return toast({ title: "Reject failed", description: error.message, variant: "destructive" });
     toast({ title: "Rejected" });
     load();

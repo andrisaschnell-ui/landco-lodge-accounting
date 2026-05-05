@@ -63,7 +63,7 @@ export async function postIncome(client, row, opts = {}) {
   const revenueId = await resolveAccount(client, REVENUE_CODE);
 
   const entryId = await insertEntry(client, {
-    entry_date:   row.date,
+    entry_date:   row.date || (row.year ? `${row.year}-${String(row.month).padStart(2, '0')}-01` : new Date().toISOString().split('T')[0]),
     description:  row.description || `Income: ${row.guest_name || 'Guest'}`.trim(),
     entry_type:   'income',
     reference:    row.id,
@@ -76,6 +76,32 @@ export async function postIncome(client, row, opts = {}) {
   await insertLines(client, entryId, [
     { account_id: cashId,    debit: total, credit: 0,     memo: 'Cash received' },
     { account_id: revenueId, debit: 0,     credit: total, memo: 'Accommodation income' },
+  ]);
+  return entryId;
+}
+
+// LANDCO_INCOME: Dr Cash 1111 / Cr Revenue 7111
+export async function postLandcoIncome(client, row, opts = {}) {
+  const total = Number(row.total_mzn || 0);
+  if (!total) return null;
+
+  const cashId    = await resolveAccount(client, PETTY_CASH_CODE);
+  const revenueId = await resolveAccount(client, REVENUE_CODE);
+
+  const entryId = await insertEntry(client, {
+    entry_date:   row.transaction_date,
+    description:  row.description,
+    entry_type:   'income',
+    reference:    row.source_file,
+    property_id:  row.property_id,
+    source_table: 'landco_income',
+    source_id:    row.id,
+    created_by:   opts.userId,
+  });
+
+  await insertLines(client, entryId, [
+    { account_id: cashId,    debit: total, credit: 0,     memo: row.description },
+    { account_id: revenueId, debit: 0,     credit: total, memo: 'Lodge Income' },
   ]);
   return entryId;
 }
@@ -96,7 +122,7 @@ export async function postExpense(client, row, opts = {}) {
   const cashId = await resolveAccount(client, PETTY_CASH_CODE);
 
   const entryId = await insertEntry(client, {
-    entry_date:   row.date,
+    entry_date:   row.date || (row.year ? `${row.year}-${String(row.month).padStart(2, '0')}-01` : new Date().toISOString().split('T')[0]),
     description:  row.description,
     entry_type:   'expense',
     reference:    row.id,
@@ -131,7 +157,7 @@ export async function postBank(client, row, opts = {}) {
   const suspenseId = await resolveAccount(client, SUSPENSE_CODE);
 
   const entryId = await insertEntry(client, {
-    entry_date:   row.date,
+    entry_date:   row.date || (row.year ? `${row.year}-${String(row.month).padStart(2, '0')}-01` : new Date().toISOString().split('T')[0]),
     description:  row.description,
     entry_type:   'bank',
     reference:    row.reference || row.id,
@@ -158,7 +184,7 @@ export async function postPettyCash(client, row, opts = {}) {
   const suspenseId = await resolveAccount(client, SUSPENSE_CODE);
 
   const entryId = await insertEntry(client, {
-    entry_date:   row.date,
+    entry_date:   row.date || (row.year ? `${row.year}-${String(row.month).padStart(2, '0')}-01` : new Date().toISOString().split('T')[0]),
     description:  row.description,
     entry_type:   'petty_cash',
     reference:    row.reference || row.id,
@@ -231,6 +257,7 @@ export const POSTERS = {
   bank_transactions:        postBank,
   petty_cash_transactions:  postPettyCash,
   salary_runs:              postPayroll,
+  landco_income:            postLandcoIncome,
 };
 
 // Update the source row's journal_entry_id back-reference.

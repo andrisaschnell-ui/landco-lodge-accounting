@@ -1,19 +1,20 @@
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import type { CashControlParseResult, ParsedCashSheet, CashSheetType } from "./parsers/cashControlParser";
+import { supabase } from "@/integrations/supabase/client";
 
 async function seedDropdownOptions(sheet_type: CashSheetType, column_key: string, values: string[]) {
   const clean = Array.from(new Set(values.map((v) => v?.trim()).filter((v): v is string => !!v)));
   if (clean.length === 0) return;
   const rows = clean.map((value, idx) => ({ sheet_type, column_key, value, sort_order: idx }));
   // upsert with ON CONFLICT DO NOTHING semantics
-  await supabase.from("cash_dropdown_options").upsert(rows, { onConflict: "sheet_type,column_key,value", ignoreDuplicates: true });
+  await db.from("cash_dropdown_options").upsert(rows, { onConflict: "sheet_type,column_key,value", ignoreDuplicates: true });
 }
 
 async function seedAllocationColumns(sheet_type: CashSheetType, columns: string[]) {
   const clean = Array.from(new Set(columns.map((c) => c?.trim()).filter((c): c is string => !!c)));
   if (clean.length === 0) return;
   const rows = clean.map((column_name, idx) => ({ sheet_type, column_name, sort_order: idx }));
-  await supabase.from("cash_allocation_columns").upsert(rows, { onConflict: "sheet_type,column_name", ignoreDuplicates: true });
+  await db.from("cash_allocation_columns").upsert(rows, { onConflict: "sheet_type,column_name", ignoreDuplicates: true });
 }
 
 async function importOneSheet(sheet: ParsedCashSheet): Promise<number> {
@@ -26,8 +27,8 @@ async function importOneSheet(sheet: ParsedCashSheet): Promise<number> {
     .eq("month", sheet.month as any);
   if (existing && existing.length > 0) {
     const ids = existing.map((e) => e.id);
-    await supabase.from("cash_transactions").delete().in("sheet_id", ids);
-    await supabase.from("cash_sheets").delete().in("id", ids);
+    await db.from("cash_transactions").delete().in("sheet_id", ids);
+    await db.from("cash_sheets").delete().in("id", ids);
   }
 
   // Insert sheet
@@ -69,7 +70,7 @@ async function importOneSheet(sheet: ParsedCashSheet): Promise<number> {
       allocations: t.allocations,
       source_file: sheet.source_file,
     }));
-    const { error: txErr } = await supabase.from("cash_transactions").insert(txRows);
+    const { error: txErr } = await db.from("cash_transactions").insert(txRows);
     if (txErr) throw new Error(`Failed to insert transactions: ${txErr.message}`);
   }
 

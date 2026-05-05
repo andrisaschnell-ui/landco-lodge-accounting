@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ export default function AuditLog() {
 
   async function load() {
     setLoading(true);
-    let q = supabase.from("audit_log").select("*").order("occurred_at", { ascending: false }).limit(500);
+    let q = db.from("audit_log").select("*").order("occurred_at", { ascending: false }).limit(500);
     if (tableName !== "all") q = q.eq("table_name", tableName);
     if (action !== "all") q = q.eq("action", action);
     const { data } = await q;
