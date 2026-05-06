@@ -803,7 +803,7 @@ export async function importShareholderBalances(result: ParsedShareholderResult,
   }));
 
   if (rows.length > 0) {
-    const { error } = await supabase.from("shareholder_balances").upsert(rows, {
+    const { error } = await db.from("shareholder_balances").upsert(rows, {
       onConflict: "shareholder_id,property_id,month,year",
     });
     if (error) throw error;

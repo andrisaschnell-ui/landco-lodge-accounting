@@ -16,7 +16,6 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 function formatMZN(v: number) {
@@ -199,7 +198,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
     setIsDuplicating(true);
     try {
       // Refuse if target month already exists
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("salary_runs")
         .select("id")
         .eq("month", dupMonth)
@@ -210,7 +209,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
       }
 
       // Create new run (clone totals as-is)
-      const { data: newRun, error: runErr } = await supabase
+      const { data: newRun, error: runErr } = await db
         .from("salary_runs")
         .insert({
           month: dupMonth,
@@ -284,7 +283,7 @@ function PayrollRun({ run, initialLines, zoomLevel }: { run: any, initialLines: 
          let empId = l.employee_id;
          // If no employee_id exists (e.g., added via '+ Row')
          if (!empId) {
-             const { data: newEmp, error: empErr } = await supabase
+             const { data: newEmp, error: empErr } = await db
                .from("employees")
                .insert({ 
                  name: l.employees?.name || "New Employee", 
@@ -879,7 +878,7 @@ export default function Payroll() {
   const { data: salaryRuns } = useQuery({
     queryKey: ["salary-runs"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("salary_runs")
         .select("*")
         .order("year", { ascending: false })
@@ -891,7 +890,7 @@ export default function Payroll() {
   const { data: salaryLines } = useQuery({
     queryKey: ["salary-lines"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await db
         .from("salary_lines")
         .select("*, employees(name, house_assignment, nib)")
         .order("created_at");
